@@ -10,7 +10,7 @@ def norm(x: torch.Tensor) -> torch.Tensor:
 
 
 class MLP(nn.Module):
-    def __init__(self, d_in: int, d_h: int, d_out: int):
+    def __init__(self, d_in: int, d_h: int, d_out: int, bias: bool = True):
         """
         MLP
         d_in (int): input size
@@ -28,7 +28,7 @@ class MLP(nn.Module):
 
         self.l1 = nn.Linear(d_in, d_h)
         self.act = nn.GELU()
-        self.l2 = nn.Linear(d_h, d_out)
+        self.l2 = nn.Linear(d_h, d_out, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.l2(self.act(self.l1(x)))
@@ -176,7 +176,7 @@ class Depatchify(nn.Module):
         self.w = w
         self.h = h
 
-        self.proj = nn.Linear(d_model, n_channels * patch_size ** 2)
+        self.proj = nn.Linear(d_model, n_channels * patch_size ** 2, bias=False)
 
     def forward(self, x: torch.Tensor, N: int) -> torch.Tensor:
         return (
@@ -359,7 +359,7 @@ class DiT(nn.Module):
 
         self.encoder = encoder_model
 
-        self.embedding_proj = nn.Linear(self.encoder.config.d_model, d_model)
+        self.embedding_proj = nn.Linear(self.encoder.config.d_model, d_model, bias=False)
 
         self.patchify = ConvPatchify(
             d_model=d_model, patch_size=patch_size, n_channels=n_channels
@@ -370,7 +370,9 @@ class DiT(nn.Module):
         )
 
         self.condition_mlp = MLP(d_model, d_model // 2, 14)
-        
+        nn.init.zeros_(self.condition_mlp.l2.weight)
+        nn.init.ones_(self.condition_mlp.l2.bias)
+
         self.multi_stream_layers = nn.ModuleList(
             [
                 MultiStreamDiTBlock(d_model=d_model, n_heads=n_heads)
@@ -384,21 +386,25 @@ class DiT(nn.Module):
                 for _ in range(n_layers_single_stream)
             ]
         )
+        
+        self.final_ln = nn.LayerNorm(d_model)
+        
 
         self.depatchify = Depatchify(
             d_model=d_model, patch_size=patch_size, w=w, h=h, n_channels=n_channels
         )
+        nn.init.xavier_normal_(self.depatchify.proj.weight, 0.05)
 
     def forward(
         self, img: torch.Tensor, tokens: torch.Tensor, timestep: int
     ) -> tuple[torch.Tensor]:
-        img_x = self.patchify(img)
+        img_x = self.patchify(norm(img))
         B, N, C = img_x.size()
 
         with torch.no_grad():
             encoder_hiddens = self.encoder(tokens).last_hidden_state
 
-        text_x = self.embedding_proj(encoder_hiddens)
+        text_x = self.embedding_proj(norm(encoder_hiddens))
 
         condition = self.condition_mlp(
             text_x.sum(dim=1) + self.time_embedding(timestep)
@@ -412,4 +418,4 @@ class DiT(nn.Module):
         for layer in self.single_stream_layers:
             x = layer(x, condition)
 
-        return self.depatchify(x, N)
+        return self.depatchify(self.final_ln(x), N)

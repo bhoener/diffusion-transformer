@@ -7,3 +7,4 @@ src/wandb/
 src/__pycache__/
 *.pt
 *.pth
+src/gradients/
