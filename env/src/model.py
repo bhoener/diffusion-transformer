@@ -396,7 +396,7 @@ class DiT(nn.Module):
         nn.init.xavier_normal_(self.depatchify.proj.weight, 0.05)
 
     def forward(
-        self, img: torch.Tensor, tokens: torch.Tensor, timestep: int
+        self, img: torch.Tensor, tokens: torch.Tensor, timesteps: torch.Tensor
     ) -> tuple[torch.Tensor]:
         img_x = self.patchify(norm(img))
         B, N, C = img_x.size()
@@ -407,7 +407,7 @@ class DiT(nn.Module):
         text_x = self.embedding_proj(norm(encoder_hiddens))
 
         condition = self.condition_mlp(
-            text_x.sum(dim=1) + self.time_embedding(timestep)
+            text_x.sum(dim=1) + self.time_embedding(timesteps)
         )
 
         for layer in self.multi_stream_layers:

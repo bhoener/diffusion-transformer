@@ -35,7 +35,7 @@ optimizers = [
     torch.optim.AdamW([param for param in model.parameters() if param.ndim != 2], lr=3e-4)
 ]
 
-steps = 1000
+steps = 400
 
 to_tensor = ToTensor()
 to_image = ToPILImage()
@@ -43,19 +43,19 @@ to_image = ToPILImage()
 src = Image.open("src/test_img.jpg").convert("RGBA").resize((32, 32))
 input_img = to_tensor(src).unsqueeze(0).to(device)
 
+bsz = 16
 
-bsz = 4
-std_min = 0.0
-std_max = 1.0
 
 for step in range(steps):
-    
     input_tokens = torch.randint(0, 32128, (bsz, 16)).to(device)
-    epsilon = torch.randn(bsz, 4, 32, 32).to(device) * torch.tensor([random.uniform(std_min, std_max) for _ in range(bsz)])[:, None, None, None].to(device)
+    
+    epsilon = torch.rand(bsz, 4, 32, 32).to(device)
+    
+    ts = torch.rand(bsz)
 
-    out = model(input_img + epsilon, input_tokens, 1)
+    out = model(ts[:, None, None, None] * input_img + (1-ts[:, None, None, None]) * epsilon, input_tokens, torch.floor(ts * (model.n_timesteps - 1)).long())
 
-    loss = ((epsilon/epsilon.std(dim=0, keepdim=True) - out)**2).mean()
+    loss = ((out - (input_img - epsilon))**2).mean()
     
     loss.backward()
     
@@ -76,7 +76,7 @@ for step in range(steps):
     
     norm = nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     
-    if step % 1 == 0:
+    if step % 10 == 0:
         print(f"step: {step} | norm: {norm:.4f} | loss: {loss.item():.4f}")
         
         print(max_grad_name, max_grad_std)
@@ -85,14 +85,22 @@ for step in range(steps):
     for optim in optimizers:
         optim.step()
         optim.zero_grad()
-        
-    break
+
+with torch.no_grad():    
+    max_iters = 1000
+    x_in = torch.rand(1, 4, 32, 32).to(device)
+    for step, t in enumerate(torch.linspace(0, 1, max_iters)):
+        in_tokens = torch.randint(0, 32128, (1, 16)).to(device)
+        pred = model(x_in, in_tokens, torch.floor(torch.tensor([t * (model.n_timesteps - 1)])).long().to(device))
+        x_in = x_in + (1 / max_iters) * pred
 
 
-
-print(input_img.size())
-plt.imshow(torch.cat((input_img + epsilon, epsilon)).permute(0, 2, 3, 1).contiguous().view(-1, 32, 4).detach().cpu().numpy())
+plt.imshow(torch.cat((x_in.squeeze(0), input_img.squeeze(0)), dim=1).permute(1, 2, 0).cpu().numpy())
 plt.show()
+# print(input_img.size())
+# print(ts)
+# plt.imshow(torch.cat((input_img * ts[:, None, None, None] + (1-ts[:, None, None, None]) * epsilon, epsilon)).permute(0, 2, 3, 1).contiguous().view(-1, 32, 4).detach().cpu().numpy())
+# plt.show()
 
 
  
