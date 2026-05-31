@@ -55,6 +55,8 @@ for step in range(steps):
 
     out = model(ts[:, None, None, None] * input_img + (1-ts[:, None, None, None]) * epsilon, input_tokens, torch.floor(ts * (model.n_timesteps - 1)).long())
 
+    out = out / 2 + 0.5
+
     loss = ((out - (input_img - epsilon))**2).mean()
     
     loss.backward()
@@ -92,7 +94,7 @@ with torch.no_grad():
     for step, t in enumerate(torch.linspace(0, 1, max_iters)):
         in_tokens = torch.randint(0, 32128, (1, 16)).to(device)
         pred = model(x_in, in_tokens, torch.floor(torch.tensor([t * (model.n_timesteps - 1)])).long().to(device))
-        x_in = x_in + (1 / max_iters) * pred
+        x_in = x_in + (1 / max_iters) * (pred / 2 + 0.5)
 
 
 plt.imshow(torch.cat((x_in.squeeze(0), input_img.squeeze(0)), dim=1).permute(1, 2, 0).cpu().numpy())
