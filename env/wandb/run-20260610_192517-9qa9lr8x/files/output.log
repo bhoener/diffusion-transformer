@@ -1,0 +1,1039 @@
+step: 0 | norm: 1.4979 | loss: 0.4486
+patchify.conv.bias 0.0019409635569900274
+step: 10 | norm: 0.3280 | loss: 0.1553
+patchify.conv.bias 0.0004107993154320866
+step: 20 | norm: 0.1944 | loss: 0.1317
+single_stream_condition_mlp.l2.bias 0.00032715153065510094
+step: 30 | norm: 0.1421 | loss: 0.1200
+single_stream_condition_mlp.l2.bias 0.0003824041923508048
+step: 40 | norm: 0.1252 | loss: 0.1141
+patchify.conv.bias 0.0001562256511533633
+step: 50 | norm: 0.1026 | loss: 0.1059
+multi_stream_condition_mlp.l2.bias 0.00024514755932614207
+step: 60 | norm: 0.0970 | loss: 0.0994
+multi_stream_condition_mlp.l2.bias 0.00018563022604212165
+step: 70 | norm: 0.1111 | loss: 0.0958
+multi_stream_condition_mlp.l2.bias 0.0005144182941876352
+step: 80 | norm: 0.0795 | loss: 0.0883
+multi_stream_condition_mlp.l2.bias 0.0002649559173732996
+step: 90 | norm: 0.0854 | loss: 0.0848
+multi_stream_condition_mlp.l2.bias 0.0003936408320441842
+step: 100 | norm: 0.0793 | loss: 0.0859
+single_stream_condition_mlp.l2.bias 0.000275024794973433
+step: 110 | norm: 0.0741 | loss: 0.0829
+single_stream_condition_mlp.l2.bias 0.0002828258147928864
+step: 120 | norm: 0.0720 | loss: 0.0804
+single_stream_condition_mlp.l2.bias 0.00025994304451160133
+step: 130 | norm: 0.0740 | loss: 0.0804
+single_stream_condition_mlp.l2.bias 0.00040930896648205817
+step: 140 | norm: 0.0709 | loss: 0.0785
+single_stream_condition_mlp.l2.bias 0.00020905699057038873
+step: 150 | norm: 0.0721 | loss: 0.0790
+single_stream_condition_mlp.l2.bias 0.0004409902903717011
+step: 160 | norm: 0.0754 | loss: 0.0776
+single_stream_condition_mlp.l2.bias 0.0003540553152561188
+step: 170 | norm: 0.0698 | loss: 0.0776
+single_stream_condition_mlp.l2.bias 0.0004522361559793353
+step: 180 | norm: 0.0733 | loss: 0.0780
+single_stream_condition_mlp.l2.bias 0.0003153063007630408
+step: 190 | norm: 0.0715 | loss: 0.0782
+single_stream_condition_mlp.l2.bias 0.0006993015413172543
+step: 200 | norm: 0.0709 | loss: 0.0769
+single_stream_condition_mlp.l2.bias 0.000559649954084307
+step: 210 | norm: 0.0755 | loss: 0.0770
+single_stream_condition_mlp.l2.bias 0.0002698016760405153
+step: 220 | norm: 0.0757 | loss: 0.0747
+single_stream_condition_mlp.l2.bias 0.0004574146296363324
+step: 230 | norm: 0.0794 | loss: 0.0738
+single_stream_condition_mlp.l2.bias 0.0006580489571206272
+step: 240 | norm: 0.0837 | loss: 0.0749
+single_stream_condition_mlp.l2.bias 0.0001680476125329733
+step: 250 | norm: 0.0836 | loss: 0.0722
+single_stream_condition_mlp.l2.bias 0.00024060440773610026
+step: 260 | norm: 0.0830 | loss: 0.0733
+single_stream_condition_mlp.l2.bias 0.0002904183347709477
+step: 270 | norm: 0.0841 | loss: 0.0730
+single_stream_condition_mlp.l2.bias 0.00033621094189584255
+step: 280 | norm: 0.0798 | loss: 0.0734
+single_stream_condition_mlp.l2.bias 0.000636430224403739
+step: 290 | norm: 0.0995 | loss: 0.0710
+single_stream_condition_mlp.l2.bias 0.0010733664967119694
+step: 300 | norm: 0.1007 | loss: 0.0701
+single_stream_condition_mlp.l2.bias 0.0003726510039996356
+step: 310 | norm: 0.0917 | loss: 0.0686
+single_stream_condition_mlp.l2.bias 0.0003715072525665164
+step: 320 | norm: 0.1001 | loss: 0.0665
+single_stream_condition_mlp.l2.bias 0.0006283424445427954
+step: 330 | norm: 0.1753 | loss: 0.0681
+single_stream_condition_mlp.l2.bias 0.0015071309171617031
+step: 340 | norm: 0.1066 | loss: 0.0664
+single_stream_condition_mlp.l2.bias 0.0009949413361027837
+step: 350 | norm: 0.0945 | loss: 0.0655
+single_stream_condition_mlp.l2.bias 0.0007995688356459141
+step: 360 | norm: 0.1131 | loss: 0.0683
+single_stream_condition_mlp.l2.bias 0.00031395870610140264
+step: 370 | norm: 0.1016 | loss: 0.0631
+single_stream_condition_mlp.l2.bias 0.00035388668766245246
+step: 380 | norm: 0.0982 | loss: 0.0629
+single_stream_condition_mlp.l2.bias 0.00039749397546984255
+step: 390 | norm: 0.1090 | loss: 0.0634
+single_stream_condition_mlp.l2.bias 0.0004113357572350651
+step: 400 | norm: 0.1069 | loss: 0.0637
+single_stream_condition_mlp.l2.bias 0.000427363149356097
+step: 410 | norm: 0.1161 | loss: 0.0634
+single_stream_condition_mlp.l2.bias 0.0006109511596150696
+step: 420 | norm: 0.1236 | loss: 0.0631
+single_stream_condition_mlp.l2.bias 0.0006579216569662094
+step: 430 | norm: 0.1141 | loss: 0.0618
+single_stream_condition_mlp.l2.bias 0.0008008643053472042
+step: 440 | norm: 0.1165 | loss: 0.0580
+single_stream_condition_mlp.l2.bias 0.0005910407053306699
+step: 450 | norm: 0.1261 | loss: 0.0604
+single_stream_condition_mlp.l2.bias 0.0006869597709737718
+step: 460 | norm: 0.1320 | loss: 0.0614
+single_stream_condition_mlp.l2.bias 0.0005228676600381732
+step: 470 | norm: 0.1067 | loss: 0.0581
+single_stream_condition_mlp.l2.bias 0.00043131233542226255
+step: 480 | norm: 0.1618 | loss: 0.0592
+single_stream_condition_mlp.l2.bias 0.002537412801757455
+step: 490 | norm: 0.1376 | loss: 0.0590
+single_stream_condition_mlp.l2.bias 0.0007025189697742462
+step: 500 | norm: 0.1371 | loss: 0.0595
+single_stream_condition_mlp.l2.bias 0.0005934399669058621
+step: 510 | norm: 0.1464 | loss: 0.0584
+single_stream_condition_mlp.l2.bias 0.0008372851298190653
+step: 520 | norm: 0.1305 | loss: 0.0546
+single_stream_condition_mlp.l2.bias 0.0006821189890615642
+step: 530 | norm: 0.1656 | loss: 0.0580
+single_stream_condition_mlp.l2.bias 0.0006522503099404275
+step: 540 | norm: 0.1513 | loss: 0.0597
+single_stream_condition_mlp.l2.bias 0.00037382676964625716
+step: 550 | norm: 0.1729 | loss: 0.0558
+single_stream_condition_mlp.l2.bias 0.0010622862027958035
+step: 560 | norm: 0.1593 | loss: 0.0562
+single_stream_condition_mlp.l2.bias 0.0005620908341370523
+step: 570 | norm: 0.1358 | loss: 0.0554
+single_stream_condition_mlp.l2.bias 0.0006140214391052723
+step: 580 | norm: 0.1227 | loss: 0.0534
+single_stream_condition_mlp.l2.bias 0.00039375669439323246
+step: 590 | norm: 0.1323 | loss: 0.0541
+single_stream_condition_mlp.l2.bias 0.0009186535025946796
+step: 600 | norm: 0.1284 | loss: 0.0534
+single_stream_condition_mlp.l2.bias 0.000714385649189353
+step: 610 | norm: 0.1916 | loss: 0.0581
+single_stream_condition_mlp.l2.bias 0.0005814356845803559
+step: 620 | norm: 0.2043 | loss: 0.0591
+single_stream_condition_mlp.l2.bias 0.0004101567028556019
+step: 630 | norm: 0.2222 | loss: 0.0538
+single_stream_condition_mlp.l2.bias 0.0050146556459367275
+step: 640 | norm: 0.1483 | loss: 0.0514
+single_stream_condition_mlp.l2.bias 0.000785154988989234
+step: 650 | norm: 0.1950 | loss: 0.0564
+single_stream_condition_mlp.l2.bias 0.001228941255249083
+step: 660 | norm: 0.1213 | loss: 0.0483
+single_stream_condition_mlp.l2.bias 0.0012233247980475426
+step: 670 | norm: 0.1433 | loss: 0.0509
+single_stream_condition_mlp.l2.bias 0.0005483902059495449
+step: 680 | norm: 0.1274 | loss: 0.0519
+single_stream_condition_mlp.l2.bias 0.000514915504027158
+step: 690 | norm: 0.1791 | loss: 0.0539
+single_stream_condition_mlp.l2.bias 0.0003825797466561198
+step: 700 | norm: 0.1397 | loss: 0.0497
+single_stream_condition_mlp.l2.bias 0.0007796735735610127
+step: 710 | norm: 0.1531 | loss: 0.0481
+single_stream_condition_mlp.l2.bias 0.001258281758055091
+step: 720 | norm: 0.1774 | loss: 0.0566
+single_stream_condition_mlp.l2.bias 0.0008421693928539753
+step: 730 | norm: 0.2033 | loss: 0.0542
+single_stream_condition_mlp.l2.bias 0.0007788435905240476
+step: 740 | norm: 0.1351 | loss: 0.0468
+single_stream_condition_mlp.l2.bias 0.0008941744454205036
+step: 750 | norm: 0.1470 | loss: 0.0502
+single_stream_condition_mlp.l2.bias 0.0010907739633694291
+step: 760 | norm: 0.1836 | loss: 0.0512
+single_stream_condition_mlp.l2.bias 0.0014625904150307178
+step: 770 | norm: 0.1311 | loss: 0.0493
+single_stream_condition_mlp.l2.bias 0.0008986130706034601
+step: 780 | norm: 0.1321 | loss: 0.0497
+single_stream_condition_mlp.l2.bias 0.000740364077500999
+step: 790 | norm: 0.1678 | loss: 0.0487
+single_stream_condition_mlp.l2.bias 0.0005248772795312107
+step: 800 | norm: 0.1433 | loss: 0.0460
+single_stream_condition_mlp.l2.bias 0.0008917854283936322
+step: 810 | norm: 0.2348 | loss: 0.0514
+single_stream_condition_mlp.l2.bias 0.0013042018981650472
+step: 820 | norm: 0.2051 | loss: 0.0505
+single_stream_condition_mlp.l2.bias 0.0010013994760811329
+step: 830 | norm: 0.2192 | loss: 0.0511
+single_stream_condition_mlp.l2.bias 0.000952179660089314
+step: 840 | norm: 0.1629 | loss: 0.0500
+single_stream_condition_mlp.l2.bias 0.002294192323461175
+step: 850 | norm: 0.1674 | loss: 0.0465
+single_stream_condition_mlp.l2.bias 0.0006418358534574509
+step: 860 | norm: 0.1719 | loss: 0.0471
+single_stream_condition_mlp.l2.bias 0.000547033385373652
+step: 870 | norm: 0.2414 | loss: 0.0489
+single_stream_condition_mlp.l2.bias 0.0006953756674192846
+step: 880 | norm: 0.1846 | loss: 0.0477
+multi_stream_condition_mlp.l2.bias 0.0006277986103668809
+step: 890 | norm: 0.1321 | loss: 0.0443
+single_stream_condition_mlp.l2.bias 0.0009417911060154438
+step: 900 | norm: 0.2455 | loss: 0.0488
+single_stream_condition_mlp.l2.bias 0.0005548277986235917
+step: 910 | norm: 0.2171 | loss: 0.0505
+single_stream_condition_mlp.l2.bias 0.0009398259571753442
+step: 920 | norm: 0.1910 | loss: 0.0490
+single_stream_condition_mlp.l2.bias 0.0013376460410654545
+step: 930 | norm: 0.1522 | loss: 0.0427
+single_stream_condition_mlp.l2.bias 0.0007704799063503742
+step: 940 | norm: 0.1758 | loss: 0.0440
+single_stream_condition_mlp.l2.bias 0.0010791365057229996
+step: 950 | norm: 0.2280 | loss: 0.0500
+single_stream_condition_mlp.l2.bias 0.00046840496361255646
+step: 960 | norm: 0.1879 | loss: 0.0464
+single_stream_condition_mlp.l2.bias 0.0014760151971131563
+step: 970 | norm: 0.2295 | loss: 0.0465
+single_stream_condition_mlp.l2.bias 0.00040318924584425986
+step: 980 | norm: 0.1973 | loss: 0.0478
+single_stream_condition_mlp.l2.bias 0.0009210073039866984
+step: 990 | norm: 0.1803 | loss: 0.0453
+single_stream_condition_mlp.l2.bias 0.0006774473586119711
+step: 1000 | norm: 0.1742 | loss: 0.0468
+single_stream_condition_mlp.l2.bias 0.0011483482085168362
+step: 1010 | norm: 0.2278 | loss: 0.0499
+single_stream_condition_mlp.l2.bias 0.001557598588988185
+step: 1020 | norm: 0.2230 | loss: 0.0472
+single_stream_condition_mlp.l2.bias 0.0035480649676173925
+step: 1030 | norm: 0.1832 | loss: 0.0481
+single_stream_condition_mlp.l2.bias 0.0006473818211816251
+step: 1040 | norm: 0.1500 | loss: 0.0421
+single_stream_condition_mlp.l2.bias 0.0015905189793556929
+step: 1050 | norm: 0.1929 | loss: 0.0495
+single_stream_condition_mlp.l2.bias 0.0007893270230852067
+step: 1060 | norm: 0.2211 | loss: 0.0506
+single_stream_condition_mlp.l2.bias 0.0008256979053840041
+step: 1070 | norm: 0.2125 | loss: 0.0427
+single_stream_condition_mlp.l2.bias 0.0012760545359924436
+step: 1080 | norm: 0.1725 | loss: 0.0432
+single_stream_condition_mlp.l2.bias 0.0007705434109084308
+step: 1090 | norm: 0.1953 | loss: 0.0452
+single_stream_condition_mlp.l2.bias 0.00039437986561097205
+step: 1100 | norm: 0.2003 | loss: 0.0437
+single_stream_condition_mlp.l2.bias 0.001735591096803546
+step: 1110 | norm: 0.1567 | loss: 0.0418
+single_stream_condition_mlp.l2.bias 0.0007150754099711776
+step: 1120 | norm: 0.1453 | loss: 0.0464
+single_stream_condition_mlp.l2.bias 0.0007436102023348212
+step: 1130 | norm: 0.2266 | loss: 0.0465
+single_stream_condition_mlp.l2.bias 0.0008125870954245329
+step: 1140 | norm: 0.2616 | loss: 0.0499
+single_stream_condition_mlp.l2.bias 0.0008455655188299716
+step: 1150 | norm: 0.2717 | loss: 0.0444
+single_stream_condition_mlp.l2.bias 0.0016006670193746686
+step: 1160 | norm: 0.1414 | loss: 0.0425
+single_stream_condition_mlp.l2.bias 0.0007525963592343032
+step: 1170 | norm: 0.1622 | loss: 0.0448
+single_stream_condition_mlp.l2.bias 0.0010336267296224833
+step: 1180 | norm: 0.1983 | loss: 0.0421
+single_stream_condition_mlp.l2.bias 0.0012562426272779703
+step: 1190 | norm: 0.1689 | loss: 0.0429
+single_stream_condition_mlp.l2.bias 0.0011595997493714094
+step: 1200 | norm: 0.1711 | loss: 0.0387
+single_stream_condition_mlp.l2.bias 0.0012914363760501146
+step: 1210 | norm: 0.2139 | loss: 0.0443
+single_stream_condition_mlp.l2.bias 0.0007624399731867015
+step: 1220 | norm: 0.1805 | loss: 0.0416
+single_stream_condition_mlp.l2.bias 0.001379059860482812
+step: 1230 | norm: 0.2285 | loss: 0.0429
+single_stream_condition_mlp.l2.bias 0.0007727319607511163
+step: 1240 | norm: 0.2807 | loss: 0.0442
+single_stream_condition_mlp.l2.bias 0.0006006030598655343
+step: 1250 | norm: 0.1944 | loss: 0.0410
+single_stream_condition_mlp.l2.bias 0.0008358632912859321
+step: 1260 | norm: 0.2176 | loss: 0.0441
+single_stream_condition_mlp.l2.bias 0.0005032743792980909
+step: 1270 | norm: 0.2089 | loss: 0.0403
+single_stream_condition_mlp.l2.bias 0.0005192451644688845
+step: 1280 | norm: 0.2772 | loss: 0.0443
+single_stream_condition_mlp.l2.bias 0.001627743011340499
+step: 1290 | norm: 0.1864 | loss: 0.0403
+single_stream_condition_mlp.l2.bias 0.0008864940027706325
+step: 1300 | norm: 0.1623 | loss: 0.0403
+single_stream_condition_mlp.l2.bias 0.0009952648542821407
+step: 1310 | norm: 0.2749 | loss: 0.0497
+multi_stream_condition_mlp.l2.bias 0.0006699953228235245
+step: 1320 | norm: 0.1854 | loss: 0.0442
+single_stream_condition_mlp.l2.bias 0.000624225300271064
+step: 1330 | norm: 0.2838 | loss: 0.0449
+single_stream_condition_mlp.l2.bias 0.0012991101248189807
+step: 1340 | norm: 0.2654 | loss: 0.0526
+single_stream_condition_mlp.l2.bias 0.0005224743508733809
+step: 1350 | norm: 0.1914 | loss: 0.0410
+single_stream_condition_mlp.l2.bias 0.0012036151019856334
+step: 1360 | norm: 0.2497 | loss: 0.0415
+single_stream_condition_mlp.l2.bias 0.001207189168781042
+step: 1370 | norm: 0.1554 | loss: 0.0396
+single_stream_condition_mlp.l2.bias 0.0007621764671057463
+step: 1380 | norm: 0.2473 | loss: 0.0395
+single_stream_condition_mlp.l2.bias 0.0008544916636310518
+step: 1390 | norm: 0.1739 | loss: 0.0467
+single_stream_condition_mlp.l2.bias 0.000992510817013681
+step: 1400 | norm: 0.1691 | loss: 0.0372
+single_stream_condition_mlp.l2.bias 0.00047603569692000747
+step: 1410 | norm: 0.1478 | loss: 0.0402
+single_stream_condition_mlp.l2.bias 0.000880338076967746
+step: 1420 | norm: 0.2259 | loss: 0.0463
+single_stream_condition_mlp.l2.bias 0.0008732027490623295
+step: 1430 | norm: 0.1734 | loss: 0.0381
+single_stream_condition_mlp.l2.bias 0.0012871017679572105
+step: 1440 | norm: 0.3712 | loss: 0.0490
+single_stream_condition_mlp.l2.bias 0.0012446005130186677
+step: 1450 | norm: 0.2806 | loss: 0.0402
+single_stream_condition_mlp.l2.bias 0.0012551831314340234
+step: 1460 | norm: 0.1916 | loss: 0.0405
+single_stream_condition_mlp.l2.bias 0.0007782210013829172
+step: 1470 | norm: 0.2500 | loss: 0.0421
+single_stream_condition_mlp.l2.bias 0.0008316547609865665
+step: 1480 | norm: 0.3041 | loss: 0.0471
+single_stream_condition_mlp.l2.bias 0.0008228488732129335
+step: 1490 | norm: 0.1920 | loss: 0.0406
+single_stream_condition_mlp.l2.bias 0.0009825386805459857
+step: 1500 | norm: 0.2078 | loss: 0.0425
+single_stream_condition_mlp.l2.bias 0.0010852051200345159
+step: 1510 | norm: 0.3240 | loss: 0.0442
+single_stream_condition_mlp.l2.bias 0.0008768190164119005
+step: 1520 | norm: 0.2377 | loss: 0.0428
+single_stream_condition_mlp.l2.bias 0.0012554752174764872
+step: 1530 | norm: 0.2535 | loss: 0.0381
+single_stream_condition_mlp.l2.bias 0.0011059102835133672
+step: 1540 | norm: 0.2537 | loss: 0.0413
+single_stream_condition_mlp.l2.bias 0.00037942067137919366
+step: 1550 | norm: 0.2524 | loss: 0.0421
+single_stream_condition_mlp.l2.bias 0.000592351658269763
+step: 1560 | norm: 0.1760 | loss: 0.0380
+single_stream_condition_mlp.l2.bias 0.001463401480577886
+step: 1570 | norm: 0.2058 | loss: 0.0360
+single_stream_condition_mlp.l2.bias 0.0008591305813752115
+step: 1580 | norm: 0.2065 | loss: 0.0366
+single_stream_condition_mlp.l2.bias 0.0009706729906611145
+step: 1590 | norm: 0.1745 | loss: 0.0402
+single_stream_condition_mlp.l2.bias 0.0008786973194219172
+step: 1600 | norm: 0.2092 | loss: 0.0385
+single_stream_condition_mlp.l2.bias 0.0007706015603616834
+step: 1610 | norm: 0.2487 | loss: 0.0404
+single_stream_condition_mlp.l2.bias 0.0008956330129876733
+step: 1620 | norm: 0.1976 | loss: 0.0392
+single_stream_condition_mlp.l2.bias 0.0015026823384687304
+step: 1630 | norm: 0.2006 | loss: 0.0422
+single_stream_condition_mlp.l2.bias 0.0005310787237249315
+step: 1640 | norm: 0.2291 | loss: 0.0381
+single_stream_condition_mlp.l2.bias 0.0008214226108975708
+step: 1650 | norm: 0.2103 | loss: 0.0348
+single_stream_condition_mlp.l2.bias 0.001114754704758525
+step: 1660 | norm: 0.2001 | loss: 0.0382
+single_stream_condition_mlp.l2.bias 0.0007600532262586057
+step: 1670 | norm: 0.1869 | loss: 0.0464
+single_stream_condition_mlp.l2.bias 0.001700962195172906
+step: 1680 | norm: 0.3034 | loss: 0.0387
+single_stream_condition_mlp.l2.bias 0.0019362132297828794
+step: 1690 | norm: 0.2941 | loss: 0.0389
+single_stream_condition_mlp.l2.bias 0.0021278175991028547
+step: 1700 | norm: 0.2939 | loss: 0.0483
+single_stream_condition_mlp.l2.bias 0.004553637467324734
+step: 1710 | norm: 0.3774 | loss: 0.0436
+single_stream_condition_mlp.l2.bias 0.0012393209617584944
+step: 1720 | norm: 0.2592 | loss: 0.0398
+single_stream_condition_mlp.l2.bias 0.0012833656510338187
+step: 1730 | norm: 0.3077 | loss: 0.0419
+single_stream_condition_mlp.l2.bias 0.0005874146590940654
+step: 1740 | norm: 0.2361 | loss: 0.0369
+single_stream_condition_mlp.l2.bias 0.0007611705223098397
+step: 1750 | norm: 0.3173 | loss: 0.0458
+single_stream_condition_mlp.l2.bias 0.0007123564137145877
+step: 1760 | norm: 0.2044 | loss: 0.0385
+single_stream_condition_mlp.l2.bias 0.002411026507616043
+step: 1770 | norm: 0.2601 | loss: 0.0406
+single_stream_condition_mlp.l2.bias 0.0008971615461632609
+step: 1780 | norm: 0.1674 | loss: 0.0352
+single_stream_condition_mlp.l2.bias 0.001442202366888523
+step: 1790 | norm: 0.2162 | loss: 0.0385
+single_stream_condition_mlp.l2.bias 0.0011917478404939175
+step: 1800 | norm: 0.2379 | loss: 0.0373
+single_stream_condition_mlp.l2.bias 0.000599245831836015
+step: 1810 | norm: 0.2356 | loss: 0.0378
+single_stream_condition_mlp.l2.bias 0.0017687884392216802
+step: 1820 | norm: 0.2371 | loss: 0.0406
+single_stream_condition_mlp.l2.bias 0.0010854109423235059
+step: 1830 | norm: 0.1632 | loss: 0.0367
+single_stream_condition_mlp.l2.bias 0.00115728669334203
+step: 1840 | norm: 0.2581 | loss: 0.0415
+single_stream_condition_mlp.l2.bias 0.0007812923286110163
+step: 1850 | norm: 0.2259 | loss: 0.0383
+single_stream_condition_mlp.l2.bias 0.0009077723952941597
+step: 1860 | norm: 0.2684 | loss: 0.0416
+single_stream_condition_mlp.l2.bias 0.0008275033324025571
+step: 1870 | norm: 0.1827 | loss: 0.0335
+single_stream_condition_mlp.l2.bias 0.0016074402956292033
+step: 1880 | norm: 0.2044 | loss: 0.0359
+single_stream_condition_mlp.l2.bias 0.0015543614281341434
+step: 1890 | norm: 0.2727 | loss: 0.0367
+single_stream_condition_mlp.l2.bias 0.0014379748608916998
+step: 1900 | norm: 0.1982 | loss: 0.0354
+single_stream_condition_mlp.l2.bias 0.0006669379072263837
+step: 1910 | norm: 0.2119 | loss: 0.0363
+single_stream_condition_mlp.l2.bias 0.0009327905136160553
+step: 1920 | norm: 0.3131 | loss: 0.0404
+single_stream_condition_mlp.l2.bias 0.0011662206379696727
+step: 1930 | norm: 0.2841 | loss: 0.0379
+single_stream_condition_mlp.l2.bias 0.001089306315407157
+step: 1940 | norm: 0.2592 | loss: 0.0400
+single_stream_condition_mlp.l2.bias 0.0007135330233722925
+step: 1950 | norm: 0.3297 | loss: 0.0429
+single_stream_condition_mlp.l2.bias 0.0018820911645889282
+step: 1960 | norm: 0.2661 | loss: 0.0393
+single_stream_condition_mlp.l2.bias 0.0004593742487486452
+step: 1970 | norm: 0.2313 | loss: 0.0378
+single_stream_condition_mlp.l2.bias 0.0009951596148312092
+step: 1980 | norm: 0.2542 | loss: 0.0351
+single_stream_condition_mlp.l2.bias 0.0014148540794849396
+step: 1990 | norm: 0.1698 | loss: 0.0330
+single_stream_condition_mlp.l2.bias 0.002142201876267791
+step: 2000 | norm: 0.1811 | loss: 0.0318
+single_stream_condition_mlp.l2.bias 0.0007251984206959605
+step: 2010 | norm: 0.2438 | loss: 0.0389
+single_stream_condition_mlp.l2.bias 0.0008333136793226004
+step: 2020 | norm: 0.3596 | loss: 0.0383
+single_stream_condition_mlp.l2.bias 0.0037428599316626787
+step: 2030 | norm: 0.1731 | loss: 0.0324
+multi_stream_condition_mlp.l2.bias 0.00046725873835384846
+step: 2040 | norm: 0.2473 | loss: 0.0363
+single_stream_condition_mlp.l2.bias 0.0006472222157754004
+step: 2050 | norm: 0.2096 | loss: 0.0338
+single_stream_condition_mlp.l2.bias 0.0019904349464923143
+step: 2060 | norm: 0.2596 | loss: 0.0346
+single_stream_condition_mlp.l2.bias 0.0008912517223507166
+step: 2070 | norm: 0.2116 | loss: 0.0341
+single_stream_condition_mlp.l2.bias 0.0005357588524930179
+step: 2080 | norm: 0.2275 | loss: 0.0399
+single_stream_condition_mlp.l2.bias 0.0011746713425964117
+step: 2090 | norm: 0.1691 | loss: 0.0319
+single_stream_condition_mlp.l2.bias 0.0024647333193570375
+step: 2100 | norm: 0.1949 | loss: 0.0394
+single_stream_condition_mlp.l2.bias 0.0011511543998494744
+step: 2110 | norm: 0.1782 | loss: 0.0351
+single_stream_condition_mlp.l2.bias 0.0012195290764793754
+step: 2120 | norm: 0.2226 | loss: 0.0361
+multi_stream_condition_mlp.l2.bias 0.0005580857396125793
+step: 2130 | norm: 0.2341 | loss: 0.0350
+single_stream_condition_mlp.l2.bias 0.0008441986283287406
+step: 2140 | norm: 0.2584 | loss: 0.0381
+single_stream_condition_mlp.l2.bias 0.001310978434048593
+step: 2150 | norm: 0.1852 | loss: 0.0322
+single_stream_condition_mlp.l2.bias 0.0011519266990944743
+step: 2160 | norm: 0.1956 | loss: 0.0394
+single_stream_condition_mlp.l2.bias 0.0013204762944951653
+step: 2170 | norm: 0.2301 | loss: 0.0352
+single_stream_condition_mlp.l2.bias 0.0005024574347771704
+step: 2180 | norm: 0.1806 | loss: 0.0320
+single_stream_condition_mlp.l2.bias 0.0006642141379415989
+step: 2190 | norm: 0.1970 | loss: 0.0333
+single_stream_condition_mlp.l2.bias 0.0011116382665932178
+step: 2200 | norm: 0.2073 | loss: 0.0335
+single_stream_condition_mlp.l2.bias 0.0013107242994010448
+step: 2210 | norm: 0.2466 | loss: 0.0379
+single_stream_condition_mlp.l2.bias 0.0007714662933722138
+step: 2220 | norm: 0.3066 | loss: 0.0477
+single_stream_condition_mlp.l2.bias 0.0011597609845921397
+step: 2230 | norm: 0.2300 | loss: 0.0363
+single_stream_condition_mlp.l2.bias 0.0011833780445158482
+step: 2240 | norm: 0.2200 | loss: 0.0337
+single_stream_condition_mlp.l2.bias 0.0009691898012533784
+step: 2250 | norm: 0.2863 | loss: 0.0377
+single_stream_condition_mlp.l2.bias 0.000689065083861351
+step: 2260 | norm: 0.2271 | loss: 0.0373
+single_stream_condition_mlp.l2.bias 0.0010266569443047047
+step: 2270 | norm: 0.2984 | loss: 0.0351
+single_stream_condition_mlp.l2.bias 0.0018590743420645595
+step: 2280 | norm: 0.2233 | loss: 0.0331
+single_stream_condition_mlp.l2.bias 0.0011675814166665077
+step: 2290 | norm: 0.2412 | loss: 0.0342
+single_stream_condition_mlp.l2.bias 0.0011399510549381375
+step: 2300 | norm: 0.2069 | loss: 0.0334
+single_stream_condition_mlp.l2.bias 0.0011824178509414196
+step: 2310 | norm: 0.2609 | loss: 0.0417
+single_stream_condition_mlp.l2.bias 0.0005772141739726067
+step: 2320 | norm: 0.3115 | loss: 0.0402
+single_stream_condition_mlp.l2.bias 0.0007167490548454225
+step: 2330 | norm: 0.2512 | loss: 0.0330
+single_stream_condition_mlp.l2.bias 0.001089666155166924
+step: 2340 | norm: 0.2051 | loss: 0.0342
+single_stream_condition_mlp.l2.bias 0.0015831311466172338
+step: 2350 | norm: 0.2931 | loss: 0.0372
+single_stream_condition_mlp.l2.bias 0.001015187008306384
+step: 2360 | norm: 0.2738 | loss: 0.0370
+single_stream_condition_mlp.l2.bias 0.0012528091901913285
+step: 2370 | norm: 0.2069 | loss: 0.0305
+single_stream_condition_mlp.l2.bias 0.0009936366695910692
+step: 2380 | norm: 0.2596 | loss: 0.0368
+single_stream_condition_mlp.l2.bias 0.0013942940859124064
+step: 2390 | norm: 0.2258 | loss: 0.0346
+single_stream_condition_mlp.l2.bias 0.001493333955295384
+step: 2400 | norm: 0.2324 | loss: 0.0409
+single_stream_condition_mlp.l2.bias 0.0011747881071642041
+step: 2410 | norm: 0.2544 | loss: 0.0377
+single_stream_condition_mlp.l2.bias 0.0012118914164602757
+step: 2420 | norm: 0.1283 | loss: 0.0322
+single_stream_condition_mlp.l2.bias 0.0010340627050027251
+step: 2430 | norm: 0.2027 | loss: 0.0310
+single_stream_condition_mlp.l2.bias 0.000423515128204599
+step: 2440 | norm: 0.4933 | loss: 0.0458
+single_stream_condition_mlp.l2.bias 0.0029362665954977274
+step: 2450 | norm: 0.1435 | loss: 0.0321
+single_stream_condition_mlp.l2.bias 0.002247379394248128
+step: 2460 | norm: 0.1709 | loss: 0.0312
+single_stream_condition_mlp.l2.bias 0.0015629372792318463
+step: 2470 | norm: 0.1591 | loss: 0.0283
+single_stream_condition_mlp.l2.bias 0.001080415560863912
+step: 2480 | norm: 0.3252 | loss: 0.0349
+single_stream_condition_mlp.l2.bias 0.0009669582941569388
+step: 2490 | norm: 0.3251 | loss: 0.0373
+single_stream_condition_mlp.l2.bias 0.001048324047587812
+step: 2500 | norm: 0.2101 | loss: 0.0320
+single_stream_condition_mlp.l2.bias 0.001007578568533063
+step: 2510 | norm: 0.1931 | loss: 0.0326
+single_stream_condition_mlp.l2.bias 0.000666976033244282
+step: 2520 | norm: 0.2701 | loss: 0.0341
+single_stream_condition_mlp.l2.bias 0.0010629503522068262
+step: 2530 | norm: 0.1954 | loss: 0.0333
+single_stream_condition_mlp.l2.bias 0.001565701561048627
+step: 2540 | norm: 0.1998 | loss: 0.0326
+single_stream_condition_mlp.l2.bias 0.0012627801625058055
+step: 2550 | norm: 0.2924 | loss: 0.0381
+single_stream_condition_mlp.l2.bias 0.002251234371215105
+step: 2560 | norm: 0.2339 | loss: 0.0344
+single_stream_condition_mlp.l2.bias 0.002069484442472458
+step: 2570 | norm: 0.2623 | loss: 0.0342
+single_stream_condition_mlp.l2.bias 0.0014009734150022268
+step: 2580 | norm: 0.2692 | loss: 0.0364
+multi_stream_condition_mlp.l2.bias 0.0007787157665006816
+step: 2590 | norm: 0.2567 | loss: 0.0307
+single_stream_condition_mlp.l2.bias 0.0021666199900209904
+step: 2600 | norm: 0.1991 | loss: 0.0303
+single_stream_condition_mlp.l2.bias 0.0006079691811464727
+step: 2610 | norm: 0.1089 | loss: 0.0276
+single_stream_condition_mlp.l2.bias 0.0019624915439635515
+step: 2620 | norm: 0.2485 | loss: 0.0400
+single_stream_condition_mlp.l2.bias 0.0011234198464080691
+step: 2630 | norm: 0.3422 | loss: 0.0342
+single_stream_condition_mlp.l2.bias 0.0017302233027294278
+step: 2640 | norm: 0.2206 | loss: 0.0323
+single_stream_condition_mlp.l2.bias 0.0016810069791972637
+step: 2650 | norm: 0.1866 | loss: 0.0330
+single_stream_condition_mlp.l2.bias 0.001681482419371605
+step: 2660 | norm: 0.3118 | loss: 0.0331
+single_stream_condition_mlp.l2.bias 0.0008815182372927666
+step: 2670 | norm: 0.2276 | loss: 0.0311
+single_stream_condition_mlp.l2.bias 0.0013074816670268774
+step: 2680 | norm: 0.2806 | loss: 0.0348
+single_stream_condition_mlp.l2.bias 0.0009570090332999825
+step: 2690 | norm: 0.2328 | loss: 0.0330
+single_stream_condition_mlp.l2.bias 0.0012632394209504128
+step: 2700 | norm: 0.1311 | loss: 0.0314
+single_stream_condition_mlp.l2.bias 0.000505616539157927
+step: 2710 | norm: 0.3163 | loss: 0.0327
+single_stream_condition_mlp.l2.bias 0.0006941053434275091
+step: 2720 | norm: 0.1996 | loss: 0.0307
+single_stream_condition_mlp.l2.bias 0.0008780924254097044
+step: 2730 | norm: 0.2159 | loss: 0.0310
+single_stream_condition_mlp.l2.bias 0.0022202502004802227
+step: 2740 | norm: 0.2122 | loss: 0.0362
+single_stream_condition_mlp.l2.bias 0.001112322323024273
+step: 2750 | norm: 0.3885 | loss: 0.0347
+multi_stream_condition_mlp.l2.bias 0.001331656938418746
+step: 2760 | norm: 0.2024 | loss: 0.0303
+single_stream_condition_mlp.l2.bias 0.0009765319409780204
+step: 2770 | norm: 0.2618 | loss: 0.0375
+single_stream_condition_mlp.l2.bias 0.0007443564827553928
+step: 2780 | norm: 0.2650 | loss: 0.0339
+single_stream_condition_mlp.l2.bias 0.0013813686091452837
+step: 2790 | norm: 0.2305 | loss: 0.0329
+single_stream_condition_mlp.l2.bias 0.001170360017567873
+step: 2800 | norm: 0.2214 | loss: 0.0412
+multi_stream_condition_mlp.l2.bias 0.0008066304726526141
+step: 2810 | norm: 0.3235 | loss: 0.0374
+single_stream_condition_mlp.l2.bias 0.0016425761859863997
+step: 2820 | norm: 0.2839 | loss: 0.0371
+multi_stream_condition_mlp.l2.bias 0.0010486566461622715
+step: 2830 | norm: 0.1916 | loss: 0.0292
+single_stream_condition_mlp.l2.bias 0.0011112373322248459
+step: 2840 | norm: 0.2651 | loss: 0.0396
+single_stream_condition_mlp.l2.bias 0.0014915111241862178
+step: 2850 | norm: 0.2341 | loss: 0.0336
+single_stream_condition_mlp.l2.bias 0.0010532471351325512
+step: 2860 | norm: 0.2906 | loss: 0.0353
+single_stream_condition_mlp.l2.bias 0.001005745492875576
+step: 2870 | norm: 0.1920 | loss: 0.0318
+single_stream_condition_mlp.l2.bias 0.001926461118273437
+step: 2880 | norm: 0.3010 | loss: 0.0332
+multi_stream_condition_mlp.l2.bias 0.0010534367756918073
+step: 2890 | norm: 0.2170 | loss: 0.0299
+single_stream_condition_mlp.l2.bias 0.001068277284502983
+step: 2900 | norm: 0.2347 | loss: 0.0340
+single_stream_condition_mlp.l2.bias 0.001030094688758254
+step: 2910 | norm: 0.1836 | loss: 0.0288
+single_stream_condition_mlp.l2.bias 0.0013419215101748705
+step: 2920 | norm: 0.2301 | loss: 0.0323
+single_stream_condition_mlp.l2.bias 0.0008580466383136809
+step: 2930 | norm: 0.3947 | loss: 0.0342
+single_stream_condition_mlp.l2.bias 0.0025547200348228216
+step: 2940 | norm: 0.1884 | loss: 0.0398
+single_stream_condition_mlp.l2.bias 0.0009829554473981261
+step: 2950 | norm: 0.2322 | loss: 0.0368
+single_stream_condition_mlp.l2.bias 0.0006524990312755108
+step: 2960 | norm: 0.2487 | loss: 0.0324
+single_stream_condition_mlp.l2.bias 0.0025685082655400038
+step: 2970 | norm: 0.2147 | loss: 0.0335
+single_stream_condition_mlp.l2.bias 0.0014094606740400195
+step: 2980 | norm: 0.3462 | loss: 0.0350
+single_stream_condition_mlp.l2.bias 0.0013554886681959033
+step: 2990 | norm: 0.2497 | loss: 0.0299
+single_stream_condition_mlp.l2.bias 0.0016139219515025616
+step: 3000 | norm: 0.2157 | loss: 0.0341
+multi_stream_condition_mlp.l2.bias 0.001373820472508669
+step: 3010 | norm: 0.3503 | loss: 0.0333
+single_stream_condition_mlp.l2.bias 0.00105478020850569
+step: 3020 | norm: 0.3163 | loss: 0.0307
+single_stream_condition_mlp.l2.bias 0.0009643516968935728
+step: 3030 | norm: 0.2289 | loss: 0.0311
+single_stream_condition_mlp.l2.bias 0.0007791217649355531
+step: 3040 | norm: 0.2954 | loss: 0.0317
+single_stream_condition_mlp.l2.bias 0.001842367579229176
+step: 3050 | norm: 0.2866 | loss: 0.0318
+single_stream_condition_mlp.l2.bias 0.0005475133657455444
+step: 3060 | norm: 0.1865 | loss: 0.0291
+single_stream_condition_mlp.l2.bias 0.0003731449251063168
+step: 3070 | norm: 0.1612 | loss: 0.0277
+single_stream_condition_mlp.l2.bias 0.0006763177225366235
+step: 3080 | norm: 0.2333 | loss: 0.0280
+single_stream_condition_mlp.l2.bias 0.0004768548533320427
+step: 3090 | norm: 0.1765 | loss: 0.0320
+single_stream_condition_mlp.l2.bias 0.0014896596549078822
+step: 3100 | norm: 0.2712 | loss: 0.0329
+single_stream_condition_mlp.l2.bias 0.0012102643959224224
+step: 3110 | norm: 0.2129 | loss: 0.0297
+single_stream_condition_mlp.l2.bias 0.0017780164489522576
+step: 3120 | norm: 0.2809 | loss: 0.0351
+single_stream_condition_mlp.l2.bias 0.0016338215209543705
+step: 3130 | norm: 0.2494 | loss: 0.0321
+single_stream_condition_mlp.l2.bias 0.0012296790955588222
+step: 3140 | norm: 0.3187 | loss: 0.0373
+single_stream_condition_mlp.l2.bias 0.001030381303280592
+step: 3150 | norm: 0.1955 | loss: 0.0326
+single_stream_condition_mlp.l2.bias 0.0015854528173804283
+step: 3160 | norm: 0.4532 | loss: 0.0425
+multi_stream_condition_mlp.l2.bias 0.0007068190607242286
+step: 3170 | norm: 0.1941 | loss: 0.0310
+single_stream_condition_mlp.l2.bias 0.0015608211979269981
+step: 3180 | norm: 0.2409 | loss: 0.0365
+single_stream_condition_mlp.l2.bias 0.000756744178943336
+step: 3190 | norm: 0.1863 | loss: 0.0307
+single_stream_condition_mlp.l2.bias 0.0013454544823616743
+step: 3200 | norm: 0.2839 | loss: 0.0304
+single_stream_condition_mlp.l2.bias 0.0010655766818672419
+step: 3210 | norm: 0.2071 | loss: 0.0309
+single_stream_condition_mlp.l2.bias 0.0014451334718614817
+step: 3220 | norm: 0.2070 | loss: 0.0318
+single_stream_condition_mlp.l2.bias 0.0008472816552966833
+step: 3230 | norm: 0.2159 | loss: 0.0345
+single_stream_condition_mlp.l2.bias 0.0013907067477703094
+step: 3240 | norm: 0.3063 | loss: 0.0359
+single_stream_condition_mlp.l2.bias 0.0010719590354710817
+step: 3250 | norm: 0.3447 | loss: 0.0389
+multi_stream_condition_mlp.l2.bias 0.0012298617511987686
+step: 3260 | norm: 0.1930 | loss: 0.0336
+single_stream_condition_mlp.l2.bias 0.0011964620789512992
+step: 3270 | norm: 0.1952 | loss: 0.0297
+single_stream_condition_mlp.l2.bias 0.0014861623058095574
+step: 3280 | norm: 0.1828 | loss: 0.0302
+single_stream_condition_mlp.l2.bias 0.001298630377277732
+step: 3290 | norm: 0.1747 | loss: 0.0276
+single_stream_condition_mlp.l2.bias 0.0013994210166856647
+step: 3300 | norm: 0.1930 | loss: 0.0309
+single_stream_condition_mlp.l2.bias 0.0006707619177177548
+step: 3310 | norm: 0.2535 | loss: 0.0305
+single_stream_condition_mlp.l2.bias 0.0025480680633336306
+step: 3320 | norm: 0.2573 | loss: 0.0320
+single_stream_condition_mlp.l2.bias 0.0015378142707049847
+step: 3330 | norm: 0.2294 | loss: 0.0296
+single_stream_condition_mlp.l2.bias 0.001762149971909821
+step: 3340 | norm: 0.2527 | loss: 0.0348
+multi_stream_condition_mlp.l2.bias 0.0007968634599819779
+step: 3350 | norm: 0.1909 | loss: 0.0306
+single_stream_condition_mlp.l2.bias 0.0008985816384665668
+step: 3360 | norm: 0.1686 | loss: 0.0387
+single_stream_condition_mlp.l2.bias 0.001089500728994608
+step: 3370 | norm: 0.2572 | loss: 0.0336
+single_stream_condition_mlp.l2.bias 0.0007501852232962847
+step: 3380 | norm: 0.2698 | loss: 0.0305
+single_stream_condition_mlp.l2.bias 0.0007392811821773648
+step: 3390 | norm: 0.2470 | loss: 0.0331
+single_stream_condition_mlp.l2.bias 0.0020587630569934845
+step: 3400 | norm: 0.3511 | loss: 0.0326
+multi_stream_condition_mlp.l2.bias 0.0011009525042027235
+step: 3410 | norm: 0.1887 | loss: 0.0339
+single_stream_condition_mlp.l2.bias 0.0014427219284698367
+step: 3420 | norm: 0.2722 | loss: 0.0385
+single_stream_condition_mlp.l2.bias 0.002727628918364644
+step: 3430 | norm: 0.1796 | loss: 0.0297
+multi_stream_condition_mlp.l2.bias 0.0013063974911347032
+step: 3440 | norm: 0.2443 | loss: 0.0315
+single_stream_condition_mlp.l2.bias 0.0007276273099705577
+step: 3450 | norm: 0.3444 | loss: 0.0342
+multi_stream_condition_mlp.l2.bias 0.0007787975482642651
+step: 3460 | norm: 0.2463 | loss: 0.0364
+single_stream_condition_mlp.l2.bias 0.001009440398775041
+step: 3470 | norm: 0.1995 | loss: 0.0311
+single_stream_condition_mlp.l2.bias 0.0012205034727230668
+step: 3480 | norm: 0.1602 | loss: 0.0302
+single_stream_condition_mlp.l2.bias 0.001961649162694812
+step: 3490 | norm: 0.2045 | loss: 0.0288
+single_stream_condition_mlp.l2.bias 0.001327132573351264
+step: 3500 | norm: 0.3301 | loss: 0.0300
+single_stream_condition_mlp.l2.bias 0.0006714893388561904
+step: 3510 | norm: 0.2646 | loss: 0.0316
+single_stream_condition_mlp.l2.bias 0.001310362247750163
+step: 3520 | norm: 0.2450 | loss: 0.0294
+single_stream_condition_mlp.l2.bias 0.0010078750783577561
+step: 3530 | norm: 0.2685 | loss: 0.0305
+single_stream_condition_mlp.l2.bias 0.0009102048934437335
+step: 3540 | norm: 0.2947 | loss: 0.0330
+single_stream_condition_mlp.l2.bias 0.0005941481213085353
+step: 3550 | norm: 0.3177 | loss: 0.0287
+single_stream_condition_mlp.l2.bias 0.001550688873976469
+step: 3560 | norm: 0.1626 | loss: 0.0267
+single_stream_condition_mlp.l2.bias 0.0013690979685634375
+step: 3570 | norm: 0.2228 | loss: 0.0340
+single_stream_condition_mlp.l2.bias 0.0031387624330818653
+step: 3580 | norm: 0.2655 | loss: 0.0335
+multi_stream_condition_mlp.l2.bias 0.0008265353972092271
+step: 3590 | norm: 0.1528 | loss: 0.0268
+single_stream_condition_mlp.l2.bias 0.0007565490086562932
+step: 3600 | norm: 0.2377 | loss: 0.0340
+multi_stream_condition_mlp.l2.bias 0.002021788852289319
+step: 3610 | norm: 0.2414 | loss: 0.0331
+single_stream_condition_mlp.l2.bias 0.0014365072129294276
+step: 3620 | norm: 0.3515 | loss: 0.0295
+single_stream_condition_mlp.l2.bias 0.0034111300483345985
+step: 3630 | norm: 0.4881 | loss: 0.0405
+single_stream_condition_mlp.l2.bias 0.002169952495023608
+step: 3640 | norm: 0.1932 | loss: 0.0344
+single_stream_condition_mlp.l2.bias 0.002115605864673853
+step: 3650 | norm: 0.1920 | loss: 0.0295
+single_stream_condition_mlp.l2.bias 0.0028816871345043182
+step: 3660 | norm: 0.1780 | loss: 0.0278
+single_stream_condition_mlp.l2.bias 0.001613937085494399
+step: 3670 | norm: 0.2196 | loss: 0.0269
+single_stream_condition_mlp.l2.bias 0.0014727942179888487
+step: 3680 | norm: 0.2066 | loss: 0.0273
+single_stream_condition_mlp.l2.bias 0.0013639427488669753
+step: 3690 | norm: 0.3137 | loss: 0.0340
+single_stream_condition_mlp.l2.bias 0.0013043065555393696
+step: 3700 | norm: 0.4487 | loss: 0.0351
+single_stream_condition_mlp.l2.bias 0.0009568584500811994
+step: 3710 | norm: 0.5052 | loss: 0.0558
+multi_stream_condition_mlp.l2.bias 0.007269867230206728
+step: 3720 | norm: 0.1546 | loss: 0.0325
+single_stream_condition_mlp.l2.bias 0.0020165503956377506
+step: 3730 | norm: 0.1636 | loss: 0.0347
+single_stream_condition_mlp.l2.bias 0.0015329583548009396
+step: 3740 | norm: 0.1379 | loss: 0.0335
+single_stream_condition_mlp.l2.bias 0.0010627872543409467
+step: 3750 | norm: 0.1373 | loss: 0.0278
+single_stream_condition_mlp.l2.bias 0.0006424295133911073
+step: 3760 | norm: 0.2241 | loss: 0.0344
+multi_stream_condition_mlp.l2.bias 0.0011091766646131873
+step: 3770 | norm: 0.2040 | loss: 0.0301
+multi_stream_condition_mlp.l2.bias 0.0017174528911709785
+step: 3780 | norm: 0.2645 | loss: 0.0358
+single_stream_condition_mlp.l2.bias 0.0008479882963001728
+step: 3790 | norm: 0.1242 | loss: 0.0311
+single_stream_condition_mlp.l2.bias 0.001016286201775074
+step: 3800 | norm: 0.2793 | loss: 0.0386
+single_stream_condition_mlp.l2.bias 0.0011181276058778167
+step: 3810 | norm: 0.3535 | loss: 0.0358
+multi_stream_condition_mlp.l2.bias 0.0010198894888162613
+step: 3820 | norm: 0.3211 | loss: 0.0331
+multi_stream_condition_mlp.l2.bias 0.0014212146634235978
+step: 3830 | norm: 0.2387 | loss: 0.0286
+single_stream_condition_mlp.l2.bias 0.0007812681724317372
+step: 3840 | norm: 0.1520 | loss: 0.0260
+single_stream_condition_mlp.l2.bias 0.0015133292181417346
+step: 3850 | norm: 0.2822 | loss: 0.0304
+single_stream_condition_mlp.l2.bias 0.0018121364992111921
+step: 3860 | norm: 0.2068 | loss: 0.0290
+single_stream_condition_mlp.l2.bias 0.0023276214487850666
+step: 3870 | norm: 0.2172 | loss: 0.0270
+single_stream_condition_mlp.l2.bias 0.000872655538842082
+step: 3880 | norm: 0.3238 | loss: 0.0302
+single_stream_condition_mlp.l2.bias 0.0007304875762201846
+step: 3890 | norm: 0.1865 | loss: 0.0277
+single_stream_condition_mlp.l2.bias 0.0008016963838599622
+step: 3900 | norm: 0.2392 | loss: 0.0268
+multi_stream_condition_mlp.l2.bias 0.0009361812262795866
+step: 3910 | norm: 0.3646 | loss: 0.0347
+multi_stream_condition_mlp.l2.bias 0.001200093887746334
+step: 3920 | norm: 0.2732 | loss: 0.0293
+multi_stream_condition_mlp.l2.bias 0.0015128599479794502
+step: 3930 | norm: 0.2095 | loss: 0.0271
+single_stream_condition_mlp.l2.bias 0.0023440506774932146
+step: 3940 | norm: 0.2359 | loss: 0.0266
+single_stream_condition_mlp.l2.bias 0.00083778309635818
+step: 3950 | norm: 0.1975 | loss: 0.0280
+single_stream_condition_mlp.l2.bias 0.000908082292880863
+step: 3960 | norm: 0.3162 | loss: 0.0288
+single_stream_condition_mlp.l2.bias 0.00695591839030385
+step: 3970 | norm: 0.1822 | loss: 0.0281
+single_stream_condition_mlp.l2.bias 0.0006454806425608695
+step: 3980 | norm: 0.2538 | loss: 0.0285
+single_stream_condition_mlp.l2.bias 0.0025735744275152683
+step: 3990 | norm: 0.1855 | loss: 0.0262
+single_stream_condition_mlp.l2.bias 0.002751294057816267
+step: 4000 | norm: 0.3020 | loss: 0.0253
+single_stream_condition_mlp.l2.bias 0.003930294886231422
+step: 4010 | norm: 0.3301 | loss: 0.0373
+single_stream_condition_mlp.l2.bias 0.0009318181546404958
+step: 4020 | norm: 0.2579 | loss: 0.0322
+single_stream_condition_mlp.l2.bias 0.0009324612328782678
+step: 4030 | norm: 0.2306 | loss: 0.0313
+single_stream_condition_mlp.l2.bias 0.0010955837788060308
+step: 4040 | norm: 0.2796 | loss: 0.0346
+single_stream_condition_mlp.l2.bias 0.00900348462164402
+step: 4050 | norm: 0.7518 | loss: 0.0310
+multi_stream_condition_mlp.l2.bias 0.01276316773146391
+step: 4060 | norm: 0.1612 | loss: 0.0302
+single_stream_condition_mlp.l2.bias 0.0012685091933235526
+step: 4070 | norm: 0.2150 | loss: 0.0316
+single_stream_condition_mlp.l2.bias 0.0011238321894779801
+step: 4080 | norm: 0.1535 | loss: 0.0255
+single_stream_condition_mlp.l2.bias 0.002156659495085478
+step: 4090 | norm: 0.2191 | loss: 0.0343
+multi_stream_condition_mlp.l2.bias 0.0026793729048222303
+step: 4100 | norm: 0.2191 | loss: 0.0324
+single_stream_condition_mlp.l2.bias 0.0013664730358868837
+step: 4110 | norm: 0.2345 | loss: 0.0326
+multi_stream_condition_mlp.l2.bias 0.000952360627707094
+step: 4120 | norm: 0.2749 | loss: 0.0318
+multi_stream_condition_mlp.l2.bias 0.0010505024110898376
+step: 4130 | norm: 0.3069 | loss: 0.0303
+single_stream_condition_mlp.l2.bias 0.0015009059570729733
+step: 4140 | norm: 0.3111 | loss: 0.0279
+single_stream_condition_mlp.l2.bias 0.0009342689299955964
+step: 4150 | norm: 0.2361 | loss: 0.0286
+single_stream_condition_mlp.l2.bias 0.0015407827449962497
+step: 4160 | norm: 0.2476 | loss: 0.0329
+multi_stream_condition_mlp.l2.bias 0.0008193706162273884
+step: 4170 | norm: 0.2884 | loss: 0.0362
+single_stream_condition_mlp.l2.bias 0.005172970704734325
+step: 4180 | norm: 0.1859 | loss: 0.0264
+multi_stream_condition_mlp.l2.bias 0.0009178806794807315
+step: 4190 | norm: 0.2190 | loss: 0.0325
+single_stream_condition_mlp.l2.bias 0.0003763122367672622
+step: 4200 | norm: 0.1904 | loss: 0.0282
+single_stream_condition_mlp.l2.bias 0.0006656962796114385
+step: 4210 | norm: 0.2965 | loss: 0.0299
+single_stream_condition_mlp.l2.bias 0.0010139424121007323
+step: 4220 | norm: 0.3144 | loss: 0.0295
+single_stream_condition_mlp.l2.bias 0.0014768711989745498
+step: 4230 | norm: 0.1662 | loss: 0.0258
+single_stream_condition_mlp.l2.bias 0.0012327393051236868
+step: 4240 | norm: 0.2441 | loss: 0.0306
+multi_stream_condition_mlp.l2.bias 0.0016768861096352339
+step: 4250 | norm: 0.2220 | loss: 0.0294
+single_stream_condition_mlp.l2.bias 0.0008197801071219146
+step: 4260 | norm: 0.1692 | loss: 0.0251
+single_stream_condition_mlp.l2.bias 0.0017230696976184845
+step: 4270 | norm: 0.2871 | loss: 0.0327
+single_stream_condition_mlp.l2.bias 0.002238414017483592
+step: 4280 | norm: 0.2666 | loss: 0.0341
+single_stream_condition_mlp.l2.bias 0.00189009343739599
+step: 4290 | norm: 0.2789 | loss: 0.0318
+single_stream_condition_mlp.l2.bias 0.0015419309493154287
+step: 4300 | norm: 0.2953 | loss: 0.0290
+single_stream_condition_mlp.l2.bias 0.0009266618872061372
+step: 4310 | norm: 0.3283 | loss: 0.0337
+multi_stream_condition_mlp.l2.bias 0.0008879482047632337
+step: 4320 | norm: 0.3396 | loss: 0.0381
+multi_stream_condition_mlp.l2.bias 0.0027527050115168095
+step: 4330 | norm: 0.2484 | loss: 0.0328
+single_stream_condition_mlp.l2.bias 0.001137135666795075
+step: 4340 | norm: 0.2483 | loss: 0.0285
+single_stream_condition_mlp.l2.bias 0.0013392819091677666
+step: 4350 | norm: 0.2740 | loss: 0.0309
+multi_stream_condition_mlp.l2.bias 0.0012315792264416814
+step: 4360 | norm: 0.4455 | loss: 0.0315
+single_stream_condition_mlp.l2.bias 0.000728530460037291
+step: 4370 | norm: 0.2555 | loss: 0.0275
+single_stream_condition_mlp.l2.bias 0.0009264798136427999
+step: 4380 | norm: 0.3608 | loss: 0.0313
+single_stream_condition_mlp.l2.bias 0.0006605544476769865
+step: 4390 | norm: 0.2866 | loss: 0.0330
+single_stream_condition_mlp.l2.bias 0.0020283139310777187
+step: 4400 | norm: 0.5492 | loss: 0.0325
+single_stream_condition_mlp.l2.bias 0.0028727755416184664
+step: 4410 | norm: 0.1907 | loss: 0.0279
+multi_stream_condition_mlp.l2.bias 0.0014902297407388687
+step: 4420 | norm: 0.2974 | loss: 0.0309
+single_stream_condition_mlp.l2.bias 0.001856729038991034
+step: 4430 | norm: 0.3504 | loss: 0.0307
+multi_stream_condition_mlp.l2.bias 0.0006908177747391164
+step: 4440 | norm: 0.4377 | loss: 0.0316
+single_stream_condition_mlp.l2.bias 0.010697271674871445
+step: 4450 | norm: 0.4392 | loss: 0.0356
+multi_stream_condition_mlp.l2.bias 0.0018892950611189008
+step: 4460 | norm: 0.2249 | loss: 0.0311
+multi_stream_condition_mlp.l2.bias 0.0006053390097804368
+step: 4470 | norm: 0.1639 | loss: 0.0243
+multi_stream_condition_mlp.l2.bias 0.0005966128082945943
+step: 4480 | norm: 0.1523 | loss: 0.0286
+multi_stream_condition_mlp.l2.bias 0.0016883492935448885
+step: 4490 | norm: 0.1693 | loss: 0.0297
+single_stream_condition_mlp.l2.bias 0.0010511502623558044
+step: 4500 | norm: 0.1630 | loss: 0.0272
+multi_stream_condition_mlp.l2.bias 0.0009943825425580144
+step: 4510 | norm: 0.2253 | loss: 0.0304
+single_stream_condition_mlp.l2.bias 0.0021218645852059126
+step: 4520 | norm: 0.1865 | loss: 0.0292
+single_stream_condition_mlp.l2.bias 0.0007936698384582996
+step: 4530 | norm: 0.2885 | loss: 0.0349
+single_stream_condition_mlp.l2.bias 0.002604653825983405
+step: 4540 | norm: 0.1713 | loss: 0.0282
+single_stream_condition_mlp.l2.bias 0.0009066160419024527
+step: 4550 | norm: 0.2480 | loss: 0.0284
+single_stream_condition_mlp.l2.bias 0.001203614054247737
+step: 4560 | norm: 0.3464 | loss: 0.0289
+single_stream_condition_mlp.l2.bias 0.0015495631378144026
+step: 4570 | norm: 0.1720 | loss: 0.0247
+single_stream_condition_mlp.l2.bias 0.002306122798472643
+step: 4580 | norm: 0.1860 | loss: 0.0285
+multi_stream_condition_mlp.l2.bias 0.0009020453435368836
+step: 4590 | norm: 0.1575 | loss: 0.0249
+single_stream_condition_mlp.l2.bias 0.0010599421802908182
+step: 4600 | norm: 0.4459 | loss: 0.0346
+multi_stream_condition_mlp.l2.bias 0.0012614611769095063
+step: 4610 | norm: 0.2793 | loss: 0.0297
+single_stream_condition_mlp.l2.bias 0.0020758856553584337
+step: 4620 | norm: 0.1182 | loss: 0.0245
+single_stream_condition_mlp.l2.bias 0.0007319567375816405
+step: 4630 | norm: 0.8884 | loss: 0.0409
+multi_stream_condition_mlp.l2.bias 0.006631708703935146
+step: 4640 | norm: 0.1899 | loss: 0.0375
+multi_stream_condition_mlp.l2.bias 0.0022941059432923794
+step: 4650 | norm: 0.0958 | loss: 0.0288
+multi_stream_condition_mlp.l2.bias 0.0013218946987763047
+step: 4660 | norm: 0.1622 | loss: 0.0313
+single_stream_condition_mlp.l2.bias 0.0006397636607289314
+step: 4670 | norm: 0.2494 | loss: 0.0288
+single_stream_condition_mlp.l2.bias 0.0007773509132675827
+step: 4680 | norm: 0.2214 | loss: 0.0334
+single_stream_condition_mlp.l2.bias 0.0010709782363846898
+step: 4690 | norm: 0.3547 | loss: 0.0311
+single_stream_condition_mlp.l2.bias 0.0013987282291054726
+step: 4700 | norm: 0.1696 | loss: 0.0285
+single_stream_condition_mlp.l2.bias 0.0016662408597767353
+step: 4710 | norm: 0.2311 | loss: 0.0313
+single_stream_condition_mlp.l2.bias 0.0010522090597078204
+step: 4720 | norm: 0.1386 | loss: 0.0246
+single_stream_condition_mlp.l2.bias 0.0009867651388049126
+step: 4730 | norm: 0.2413 | loss: 0.0295
+single_stream_condition_mlp.l2.bias 0.0008510040352120996
+step: 4740 | norm: 0.1761 | loss: 0.0258
+single_stream_condition_mlp.l2.bias 0.0007959469803608954
+step: 4750 | norm: 0.1871 | loss: 0.0311
+single_stream_condition_mlp.l2.bias 0.0006935213459655643
+step: 4760 | norm: 0.2699 | loss: 0.0267
+single_stream_condition_mlp.l2.bias 0.0016223345883190632
+step: 4770 | norm: 0.2544 | loss: 0.0260
+multi_stream_condition_mlp.l2.bias 0.0010605617426335812
+step: 4780 | norm: 0.1617 | loss: 0.0253
+single_stream_condition_mlp.l2.bias 0.0013196590589359403
+step: 4790 | norm: 0.2505 | loss: 0.0262
+multi_stream_condition_mlp.l2.bias 0.000981128541752696
+step: 4800 | norm: 0.2605 | loss: 0.0276
+multi_stream_condition_mlp.l2.bias 0.003061576746404171
+step: 4810 | norm: 0.5211 | loss: 0.0387
+multi_stream_condition_mlp.l2.bias 0.0018687463598325849
+step: 4820 | norm: 0.4405 | loss: 0.0342
+single_stream_condition_mlp.l2.bias 0.0021996668074280024
+step: 4830 | norm: 0.3424 | loss: 0.0303
+single_stream_condition_mlp.l2.bias 0.0037743872962892056
+step: 4840 | norm: 0.1961 | loss: 0.0316
+multi_stream_condition_mlp.l2.bias 0.0006881663575768471
+step: 4850 | norm: 0.1965 | loss: 0.0248
+single_stream_condition_mlp.l2.bias 0.001729566603899002
+step: 4860 | norm: 0.2017 | loss: 0.0252
+single_stream_condition_mlp.l2.bias 0.0018811427289620042
+step: 4870 | norm: 0.1929 | loss: 0.0267
+multi_stream_condition_mlp.l2.bias 0.001740116742439568
+step: 4880 | norm: 0.1279 | loss: 0.0233
+single_stream_condition_mlp.l2.bias 0.001053040032275021
+step: 4890 | norm: 0.2779 | loss: 0.0289
+single_stream_condition_mlp.l2.bias 0.0012128729140385985
+step: 4900 | norm: 0.3021 | loss: 0.0258
+multi_stream_condition_mlp.l2.bias 0.00118641450535506
+step: 4910 | norm: 0.2088 | loss: 0.0300
+multi_stream_condition_mlp.l2.bias 0.0025872215628623962
+step: 4920 | norm: 0.2095 | loss: 0.0271
+single_stream_condition_mlp.l2.bias 0.0015346917789429426
+step: 4930 | norm: 0.1845 | loss: 0.0341
+multi_stream_condition_mlp.l2.bias 0.0006568923126906157
+step: 4940 | norm: 0.2031 | loss: 0.0349
+single_stream_condition_mlp.l2.bias 0.002925859997048974
+step: 4950 | norm: 0.1370 | loss: 0.0297
+multi_stream_condition_mlp.l2.bias 0.0008456160430796444
+step: 4960 | norm: 0.2222 | loss: 0.0299
+single_stream_condition_mlp.l2.bias 0.0010275437962263823
+step: 4970 | norm: 0.2551 | loss: 0.0266
+single_stream_condition_mlp.l2.bias 0.00154359161388129
+step: 4980 | norm: 0.2307 | loss: 0.0257
+single_stream_condition_mlp.l2.bias 0.0008454933413304389
+step: 4990 | norm: 0.3546 | loss: 0.0311
+multi_stream_condition_mlp.l2.bias 0.0011652050307020545
+Traceback (most recent call last):
+  File "E:\Other\Diffusion\env\src\fwdbwdtest.py", line 134, in <module>
+    pred = model(
+        x_in,
+        input_tokens,
+        torch.floor(t * (model.n_timesteps - 1)).long().to(device),
+    )
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\nn\modules\module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\nn\modules\module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "E:\Other\Diffusion\env\src\model.py", line 465, in forward
+    img_x, text_x = layer(img_x, text_x, multi_stream_condition)
+                    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\nn\modules\module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\nn\modules\module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "E:\Other\Diffusion\env\src\model.py", line 296, in forward
+    + self.cross_attention(
+      ~~~~~~~~~~~~~~~~~~~~^
+        img_x * condition[:, self.layer_index, 0, None, None]
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        + condition[:, self.layer_index, 3, None, None],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\nn\modules\module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\nn\modules\module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "E:\Other\Diffusion\env\src\model.py", line 97, in forward
+    F.scaled_dot_product_attention(Q, K, V).permute(0, 2, 1, 3).contiguous()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+RuntimeError: Expected size for first two dimensions of batch2 tensor to be: [12, 64] but got: [12, 1024].

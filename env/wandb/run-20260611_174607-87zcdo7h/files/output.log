@@ -1,0 +1,73 @@
+step: 0 | norm: 1.5559 | loss: 0.4613
+patchify.conv.bias 0.0019960689824074507
+step: 10 | norm: 0.3555 | loss: 0.1665
+single_stream_condition_mlp.l2.bias 0.0008384173270314932
+step: 20 | norm: 0.1684 | loss: 0.1388
+patchify.conv.bias 0.00019766965124290437
+step: 30 | norm: 0.1297 | loss: 0.1127
+single_stream_condition_mlp.l2.bias 0.0005932434578426182
+step: 40 | norm: 0.1148 | loss: 0.1043
+single_stream_condition_mlp.l2.bias 0.0007845130166970193
+step: 50 | norm: 0.0966 | loss: 0.0962
+single_stream_condition_mlp.l2.bias 0.00021157899755053222
+step: 60 | norm: 0.0951 | loss: 0.0974
+single_stream_condition_mlp.l2.bias 0.0003319155075587332
+step: 70 | norm: 0.0824 | loss: 0.0866
+single_stream_condition_mlp.l2.bias 0.0004563060065265745
+step: 80 | norm: 0.0785 | loss: 0.0850
+single_stream_condition_mlp.l2.bias 0.000516649626661092
+step: 90 | norm: 0.0824 | loss: 0.0850
+multi_stream_condition_mlp.l2.bias 0.0003752742486540228
+step: 100 | norm: 0.0686 | loss: 0.0840
+single_stream_condition_mlp.l2.bias 0.0004318201681599021
+step: 110 | norm: 0.0680 | loss: 0.0797
+single_stream_condition_mlp.l2.bias 0.0004931659204885364
+step: 120 | norm: 0.0656 | loss: 0.0789
+single_stream_condition_mlp.l2.bias 0.00030011730268597603
+step: 130 | norm: 0.0621 | loss: 0.0800
+single_stream_condition_mlp.l2.bias 0.0001939656212925911
+step: 140 | norm: 0.0632 | loss: 0.0801
+single_stream_condition_mlp.l2.bias 0.00034547611721791327
+step: 150 | norm: 0.0604 | loss: 0.0796
+single_stream_condition_mlp.l2.bias 0.0002647209039423615
+step: 160 | norm: 0.0695 | loss: 0.0786
+single_stream_condition_mlp.l2.bias 0.00041578657692298293
+step: 170 | norm: 0.0607 | loss: 0.0773
+single_stream_condition_mlp.l2.bias 0.0005854264600202441
+step: 180 | norm: 0.0619 | loss: 0.0772
+single_stream_condition_mlp.l2.bias 0.0003618692862801254
+Traceback (most recent call last):
+  File "E:\Other\Diffusion\env\src\fwdbwdtest.py", line 132, in <module>
+    optim.step()
+    ~~~~~~~~~~^^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\optim\optimizer.py", line 530, in wrapper
+    out = func(*args, **kwargs)
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\utils\_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\optim\_muon.py", line 188, in step
+    muon(
+    ~~~~^
+        params_with_grad,
+        ^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+        has_complex=has_complex,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\optim\optimizer.py", line 148, in maybe_fallback
+    return func(*args, **kwargs)
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\optim\_muon.py", line 370, in muon
+    func(
+    ~~~~^
+        params,
+        ^^^^^^^
+    ...<10 lines>...
+        has_complex=has_complex,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\optim\_muon.py", line 336, in _single_tensor_muon
+    update = _zeropower_via_newtonschulz(update, ns_coefficients, ns_steps, eps)
+  File "E:\Other\Diffusion\env\Lib\site-packages\torch\optim\_muon.py", line 66, in _zeropower_via_newtonschulz
+    ortho_grad = torch.addmm(ortho_grad, gram_update, ortho_grad, beta=a)
+KeyboardInterrupt

@@ -1,0 +1,87 @@
+_wandb:
+    value:
+        cli_version: 0.27.2
+        e:
+            zoaws3ll8c3uv35ou4r7ytudut5vlfcp:
+                codePath: env\src\fwdbwdtest.py
+                codePathLocal: src\fwdbwdtest.py
+                cpu_count: 16
+                cpu_count_logical: 24
+                cudaVersion: "12.8"
+                disk:
+                    /:
+                        total: "4000750497792"
+                        used: "2240603430912"
+                email: brodiehoener@icloud.com
+                executable: E:\Other\Diffusion\env\Scripts\python.exe
+                git:
+                    commit: 0ac6895797143dad3b9f3876400fc1f936616f94
+                    remote: https://github.com/bhoener/diffusion-transformer.git
+                gpu: NVIDIA GeForce RTX 4060 Ti
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ada
+                      cudaCores: 4352
+                      memoryTotal: "17175674880"
+                      name: NVIDIA GeForce RTX 4060 Ti
+                      uuid: GPU-6dba68c7-bf17-a382-3cea-b36a6ebee8a9
+                host: MSI
+                memory:
+                    total: "34192588800"
+                os: Windows-11-10.0.26200-SP0
+                program: E:\Other\Diffusion\env\src\fwdbwdtest.py
+                python: CPython 3.14.4
+                root: E:\Other\Diffusion\env
+                startedAt: "2026-06-11T22:25:33.986355Z"
+                writerId: zoaws3ll8c3uv35ou4r7ytudut5vlfcp
+        m: []
+        python_version: 3.14.4
+        t:
+            "1":
+                - 1
+                - 11
+                - 41
+                - 49
+                - 71
+            "2":
+                - 1
+                - 11
+                - 41
+                - 49
+                - 71
+            "3":
+                - 16
+                - 41
+            "4": 3.14.4
+            "5": 0.27.2
+            "6": 5.8.1
+            "8":
+                - 3
+            "12": 0.27.2
+            "13": windows-amd64
+adam_lr:
+    value: 0.0001
+batch_size:
+    value: 16
+d_model:
+    value: 768
+dataset:
+    value: dummy
+h:
+    value: 32
+muon_lr:
+    value: 0.01
+n_channels:
+    value: 3
+n_heads:
+    value: 12
+n_layers_multi_stream:
+    value: 6
+n_layers_single_stream:
+    value: 6
+patch_size:
+    value: 16
+steps:
+    value: 5000
+w:
+    value: 32

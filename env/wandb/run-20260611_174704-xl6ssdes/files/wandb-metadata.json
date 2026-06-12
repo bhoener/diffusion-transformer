@@ -1,0 +1,40 @@
+{
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "CPython 3.14.4",
+  "startedAt": "2026-06-12T00:47:04.318791Z",
+  "program": "E:\\Other\\Diffusion\\env\\src\\fwdbwdtest.py",
+  "codePath": "env\\src\\fwdbwdtest.py",
+  "codePathLocal": "src\\fwdbwdtest.py",
+  "git": {
+    "remote": "https://github.com/bhoener/diffusion-transformer.git",
+    "commit": "0ac6895797143dad3b9f3876400fc1f936616f94"
+  },
+  "email": "brodiehoener@icloud.com",
+  "root": "E:\\Other\\Diffusion\\env",
+  "host": "MSI",
+  "executable": "E:\\Other\\Diffusion\\env\\Scripts\\python.exe",
+  "cpu_count": 16,
+  "cpu_count_logical": 24,
+  "gpu": "NVIDIA GeForce RTX 4060 Ti",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "4000750497792",
+      "used": "2240606859264"
+    }
+  },
+  "memory": {
+    "total": "34192588800"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 4060 Ti",
+      "memoryTotal": "17175674880",
+      "cudaCores": 4352,
+      "architecture": "Ada",
+      "uuid": "GPU-6dba68c7-bf17-a382-3cea-b36a6ebee8a9"
+    }
+  ],
+  "cudaVersion": "12.8",
+  "writerId": "g3eyyb9p7mp36xc2jg0vxuknes7dt7th"
+}
