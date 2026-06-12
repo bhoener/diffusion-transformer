@@ -19,7 +19,7 @@ tokenizer = AutoTokenizer.from_pretrained("google/t5-v1_1-small")
 clip_encoder = CLIPTextModelWithProjection.from_pretrained("openai/clip-vit-large-patch14", device_map=device)
 clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-large-patch14")
 
-img_size = (32, 32)
+img_size = (1024, 1024)
 n_channels = 3
 d_model = 768
 n_heads = 12
@@ -63,7 +63,7 @@ optimizers = [
 to_tensor = ToTensor()
 to_image = ToPILImage()
 
-src = Image.open("src/test_img.jpg").resize((32, 32))
+src = Image.open("src/test_img.jpg").resize((w, h))
 input_img = to_tensor(src).unsqueeze(0).to(device)
 
 

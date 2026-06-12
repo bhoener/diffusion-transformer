@@ -15,8 +15,9 @@ if not os.path.exists("data/"):
 
 print("hello")
 tokenizer = AutoTokenizer.from_pretrained("google/t5-v1_1-small")
+clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-large-patch14")
 print("hello2")
-ds = load_dataset("laion/laion2B-en-aesthetic", split="train")
+ds = load_dataset("stanford-vision-lab/gpic", split="val", data_files={"val": "hf://datasets/stanford-vision-lab/gpic/val/*.tar"})
 
 N_EXAMPLES = 1000
 BATCH_SIZE = 50
