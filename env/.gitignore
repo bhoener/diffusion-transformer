@@ -9,3 +9,4 @@ src/__pycache__/
 *.pth
 src/gradients/
 wandb/
+data/
