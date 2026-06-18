@@ -13,12 +13,12 @@ class ResNetBlock(nn.Module):
         self.stride = stride
         self.padding = padding
 
-        self.norm1 = nn.BatchNorm2d(dim)
+        self.norm1 = nn.GroupNorm(32, dim)
         self.l1 = nn.Conv2d(dim, dim, kernel_size, stride, padding=padding)
 
         self.act = nn.SiLU()
 
-        self.norm2 = nn.BatchNorm2d(dim)
+        self.norm2 = nn.GroupNorm(32, dim)
         self.l2 = nn.Conv2d(dim, dim, kernel_size, stride, padding=padding)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -345,7 +345,7 @@ class Autoencoder(nn.Module):
 def main():
     img_size = 256
     batch_size = 8
-    steps = 10000
+    steps = 30000
     latent_channels = (128, 256, 512, 512)
     z_channels = 32
     kernel_size = 3
@@ -435,7 +435,7 @@ def main():
 
     iterator = iter(dl)
 
-    optim = torch.optim.AdamW(ae.parameters(), lr=3e-4)
+    optim = torch.optim.AdamW(ae.parameters(), lr=3e-4, betas=(0.9, 0.95))
 
     wandb.watch(ae, log_freq=100)
 
@@ -475,7 +475,7 @@ def main():
                 torch.save(ae.state_dict(), f"saved_models/vae/{run.name}.pth")
         except StopIteration:
             print("Dataloader resterting")
-            iterator = iter(ds)
+            iterator = iter(dl)
     wandb.finish()
     ae.eval()
 
