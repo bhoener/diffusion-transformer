@@ -4,11 +4,14 @@ from torchvision.transforms import ToTensor
 from PIL import Image
 import matplotlib.pyplot as plt
 img_size = 256
-patch_size = 32
-latent_channels = 16
-num_downsamples = 4
-num_resnet_blocks = 4
+latent_channels = (128, 256, 512, 512)
+z_channels = 32
+kernel_size = 3
+padding = 1
+resnet_blocks_per_layer = 2
+resnet_kernel_size = 3
 resnet_stride = 1
+resnet_padding = 1
 n_channels = 3
 
 
@@ -16,20 +19,23 @@ n_channels = 3
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 ae = Autoencoder(
-    patch_size=patch_size,
-    latent_channels=latent_channels,
-    num_downsamples=num_downsamples,
-    num_resnet_blocks=num_resnet_blocks,
-    resnet_stride=resnet_stride,
-    n_channels=n_channels,
-)
+        latent_channels=latent_channels,
+        z_channels=z_channels,
+        kernel_size=kernel_size,
+        padding=padding,
+        resnet_blocks_per_layer=resnet_blocks_per_layer,
+        resnet_kernel_size=resnet_kernel_size,
+        resnet_stride=resnet_stride,
+        resnet_padding=resnet_padding,
+        n_channels=n_channels,
+    )
 
 to_tensor = ToTensor()
 
-src = Image.open("src/test_img2.png").resize((img_size, img_size))
+src = Image.open("src/test_img2.png").convert("RGB").resize((img_size, img_size))
 input_img = to_tensor(src).unsqueeze(0).to(device)
 
-ae.load_state_dict(torch.load("saved_models/vae/elated-sea-2.pth"))
+ae.load_state_dict({k.replace("_orig_mod.", "") : v for k, v in torch.load("saved_models/vae/classic-water-54.pth").items()})
 
 print(input_img.size())
 print(ae(input_img)[-1][0, :, 0, 0])
