@@ -35,13 +35,18 @@ to_tensor = ToTensor()
 src = Image.open("src/test_img2.png").convert("RGB").resize((img_size, img_size))
 input_img = to_tensor(src).unsqueeze(0).to(device)
 
-ae.load_state_dict({k.replace("_orig_mod.", "") : v for k, v in torch.load("saved_models/vae/playful-donkey-64.pth").items()})
+ae.load_state_dict({k.replace("_orig_mod.", "") : v for k, v in torch.load("saved_models/vae/wise-eon-70.pth").items()})
 
 print(input_img.size())
-print(ae(input_img)[-1][0, :, 0, 0])
+
+latent, mu, logvar = ae.encode(input_img)
+
+out = ae.decode(mu)
+
+print(f"Compression: {input_img.numel() / latent.numel():.2f}x")
 
 plt.imshow(
-    torch.cat((input_img.squeeze(0), ae(input_img)[-1].squeeze(0)), dim=1)
+    torch.cat((input_img.squeeze(0), out.squeeze(0)), dim=1)
     .permute(1, 2, 0)
     .detach()
     .cpu()

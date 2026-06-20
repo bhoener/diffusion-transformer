@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 
+
 class ResNetBlock(nn.Module):
     def __init__(
         self, dim: int, kernel_size: int = 3, stride: int = 1, padding: int = 1
@@ -42,6 +43,7 @@ class DownBlock(nn.Module):
         resnet_kernel_size: int = 3,
         resnet_stride: int = 1,
         resnet_padding: int = 1,
+        has_downsample: bool = True,
     ):
         super().__init__()
         self.num_resnet_blocks = num_resnet_blocks
@@ -49,6 +51,7 @@ class DownBlock(nn.Module):
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = 2
+        self.has_downsample = has_downsample
 
         self.resnet_blocks = nn.ModuleList(
             ResNetBlock(
@@ -60,18 +63,19 @@ class DownBlock(nn.Module):
             for _ in range(num_resnet_blocks)
         )
 
-        self.conv = nn.Conv2d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-        )
+        if self.has_downsample:
+            self.conv = nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=self.stride,
+                padding=padding,
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         for layer in self.resnet_blocks:
             x = layer(x)
-        return self.conv(x)
+        return self.conv(x) if self.has_downsample else x
 
 
 class UpBlock(nn.Module):
@@ -85,6 +89,7 @@ class UpBlock(nn.Module):
         resnet_kernel_size: int = 3,
         resnet_stride: int = 1,
         resnet_padding: int = 1,
+        has_upsample: bool = True,
     ):
         super().__init__()
         self.num_resnet_blocks = num_resnet_blocks
@@ -92,6 +97,7 @@ class UpBlock(nn.Module):
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = 2
+        self.has_upsample = has_upsample
 
         self.resnet_blocks = nn.ModuleList(
             ResNetBlock(
@@ -103,71 +109,77 @@ class UpBlock(nn.Module):
             for _ in range(num_resnet_blocks)
         )
 
-        self.conv = nn.ConvTranspose2d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=self.stride,
-            padding=padding,
-            output_padding=padding,
-        )
+        if self.has_upsample:
+            self.conv = nn.ConvTranspose2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=self.stride,
+                padding=padding,
+                output_padding=padding,
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         for layer in self.resnet_blocks:
             x = layer(x)
-        return self.conv(x)
+        return self.conv(x) if self.has_upsample else x
 
 
 class AttentionBlock(nn.Module):
     def __init__(self, d: int):
         super().__init__()
         self.d = d
-        
+
         self.norm = nn.GroupNorm(32, d)
-        
+
         self.wq = nn.Conv2d(d, d, kernel_size=1)
         self.wk = nn.Conv2d(d, d, kernel_size=1)
         self.wv = nn.Conv2d(d, d, kernel_size=1)
-        
+
         self.wo = nn.Conv2d(d, d, kernel_size=1)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, c, W, H = x.size()
-        
+
         x = self.norm(x)
-        
+
         Q = self.wq(x)
         K = self.wk(x)
         V = self.wv(x)
-        
+
         Q = rearrange(Q, "B c W H -> B 1 (W H) c").contiguous()
         K = rearrange(K, "B c W H -> B 1 (W H) c").contiguous()
         V = rearrange(V, "B c W H -> B 1 (W H) c").contiguous()
-        
+
         attn_scores = F.scaled_dot_product_attention(Q, K, V)
-        
-        out = self.wo(rearrange(attn_scores, "B 1 (W H) c -> B c W H", W = W, H=H).contiguous())
+
+        out = self.wo(
+            rearrange(attn_scores, "B 1 (W H) c -> B c W H", W=W, H=H).contiguous()
+        )
         return x + out
-    
+
+
 class MidBlock(nn.Module):
     def __init__(self, d: int, n_layers: int = 1):
         super().__init__()
         self.d = d
         self.n_layers = n_layers
-        
+
         self.resnets = nn.ModuleList(ResNetBlock(dim=d) for _ in range(n_layers))
         self.attns = nn.ModuleList(AttentionBlock(d=d) for _ in range(n_layers))
-        
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         for attention, resnet in zip(self.attns, self.resnets):
             x = attention(x)
             x = resnet(x)
         return x
 
+
 class Encoder(nn.Module):
     def __init__(
         self,
         resnet_blocks_per_layer: int,
-        channels: tuple[int], # (128, 256, 512, 512), (128, 128, 256, 512, 512)
+        channels: tuple[int],  # (128, 256, 512, 512), (128, 128, 256, 512, 512)
         z_channels: int = 32,
         kernel_size: int = 3,
         padding: int = 1,
@@ -192,24 +204,34 @@ class Encoder(nn.Module):
                 resnet_kernel_size=resnet_kernel_size,
                 resnet_stride=resnet_stride,
                 resnet_padding=resnet_padding,
+                has_downsample=(i < len(channels) - 1),
             )
-            for in_channels, out_channels in zip((channels[0],) + channels, channels)
+            for i, (in_channels, out_channels) in enumerate(
+                zip((channels[0],) + channels, channels)
+            )
         )
-        
+
         self.mid_block = MidBlock(d=channels[-1], n_layers=mid_block_layers)
-        
-        self.proj_conv = nn.Conv2d(channels[-1], z_channels, kernel_size=3, stride=1, padding=1)
-        self.mu_proj = nn.Conv2d(z_channels, z_channels, kernel_size=3, stride=1, padding=1)
-        self.log_sigma_sq_proj = nn.Conv2d(z_channels, z_channels, kernel_size=3, stride=1, padding=1)
+
+        self.proj_conv = nn.Conv2d(
+            channels[-1], z_channels, kernel_size=3, stride=1, padding=1
+        )
+        self.mu_proj = nn.Conv2d(
+            z_channels, z_channels, kernel_size=3, stride=1, padding=1
+        )
+        self.log_sigma_sq_proj = nn.Conv2d(
+            z_channels, z_channels, kernel_size=3, stride=1, padding=1
+        )
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor]:
         for layer in self.downsamples:
             x = layer(x)
-        
+
         x = self.mid_block(x)
-        
+
         x = self.proj_conv(x)
         return self.mu_proj(x), self.log_sigma_sq_proj(x)
+
 
 class Decoder(nn.Module):
     def __init__(
@@ -229,8 +251,10 @@ class Decoder(nn.Module):
         self.channels = channels
         self.kernel_size = kernel_size
         self.stride = 2
-        
-        self.in_proj = nn.Conv2d(z_channels, channels[-1], kernel_size=3, stride=1, padding=1)
+
+        self.in_proj = nn.Conv2d(
+            z_channels, channels[-1], kernel_size=3, stride=1, padding=1
+        )
 
         self.mid_block = MidBlock(d=channels[-1], n_layers=mid_block_layers)
 
@@ -246,8 +270,11 @@ class Decoder(nn.Module):
                 resnet_kernel_size=resnet_kernel_size,
                 resnet_stride=resnet_stride,
                 resnet_padding=resnet_padding,
+                has_upsample=(i > 0),
             )
-            for in_channels, out_channels in zip(in_channel_list, out_channel_list)
+            for i, (in_channels, out_channels) in enumerate(
+                zip(in_channel_list, out_channel_list)
+            )
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -301,7 +328,6 @@ class Autoencoder(nn.Module):
             resnet_padding=resnet_padding,
         )
 
-
         self.decoder = Decoder(
             channels=latent_channels,
             z_channels=z_channels,
@@ -327,20 +353,21 @@ class Autoencoder(nn.Module):
         noise = torch.randn_like(mu).to(x.device)
 
         return mu + std * noise, mu, logvar
-    
+
     def decode(self, x: torch.Tensor) -> torch.Tensor:
         x = self.decoder(x)
 
         x = self.channel_reduce_conv(x)
-        
+
         return F.sigmoid(x)
-    
+
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor]:
         latent, mu, logvar = self.encode(x)
-        
+
         out = self.decode(latent)
 
         return latent, mu, logvar, out
+
 
 def main():
     img_size = 256
@@ -355,8 +382,11 @@ def main():
     resnet_stride = 1
     resnet_padding = 1
     n_channels = 3
-    divergence_weight = 0
-    
+    divergence_weight = 1e-4
+    divergence_warmup = 1
+    cooldown_steps = 4000
+    lr = 3e-4
+
     torch.manual_seed(42)
     torch.cuda.manual_seed(42)
 
@@ -375,13 +405,13 @@ def main():
     )
 
     ae.train()
-    
+
     torch.set_float32_matmul_precision("high")
     ae = ae.to(device)
     ae = torch.compile(ae)
-    
+
     print(ae(torch.randn(6, 3, img_size, img_size).to(device))[-1].size())
-    print(f"Total Parameters: {(sum(p.numel() for p in ae.parameters())  / 1e6) :.1f}M")
+    print(f"Total Parameters: {(sum(p.numel() for p in ae.parameters()) / 1e6):.1f}M")
 
     from torchvision.transforms import ToTensor, ToPILImage
     import torchvision.transforms.v2 as transforms
@@ -405,6 +435,8 @@ def main():
             "resnet_stride": resnet_stride,
             "resnet_padding": resnet_padding,
             "n_channels": n_channels,
+            "divergence_weight": divergence_weight,
+            "divergence_warmup": divergence_warmup,
         },
     )
 
@@ -435,11 +467,11 @@ def main():
 
     iterator = iter(dl)
 
-    optim = torch.optim.AdamW(ae.parameters(), lr=3e-4, betas=(0.9, 0.95))
+    optim = torch.optim.AdamW(ae.parameters(), lr=lr, betas=(0.9, 0.95))
 
     wandb.watch(ae, log_freq=100)
 
-    for step in range(steps):
+    for step in range(steps + 1):
         try:
             x = next(iterator)["pixel_values"].to(device)
             with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16):
@@ -447,16 +479,27 @@ def main():
 
             recon_loss = ((x - pred).abs()).mean()
 
-            divergence_loss = (
-                divergence_weight * (logvar.exp() + mu**2 - 1 - logvar).mean()
+            step_divergence_weight = divergence_weight * min(
+                1, step / divergence_warmup
             )
 
-            loss = recon_loss + divergence_loss
+            divergence_loss = (logvar.exp() + mu**2 - 1 - logvar).mean()
+
+            weighted_divergence_loss = step_divergence_weight * divergence_loss
+
+            loss = recon_loss + weighted_divergence_loss
 
             optim.zero_grad()
             loss.backward()
-            
+
             norm = torch.nn.utils.clip_grad_norm_(ae.parameters(), 1.0)
+
+            frac_done = (steps - step) / cooldown_steps
+            step_lr = frac_done * lr
+            if steps - step <= cooldown_steps:
+                for param_group in optim.param_groups:
+                    param_group["lr"] = step_lr
+
             optim.step()
 
             run.log(
@@ -464,15 +507,20 @@ def main():
                     "loss": loss.item(),
                     "recon_loss": recon_loss.item(),
                     "divergence_loss": divergence_loss.item(),
+                    "step_divergence_weight": step_divergence_weight,
                     "norm": norm.item(),
+                    "step_lr": step_lr if (steps - step <= cooldown_steps) else lr,
                 }
             )
-            
+
             if step % 10 == 0:
-                print(f"step: {step:8d} | loss: {loss.item():8.4f} | recon_loss: {recon_loss.item():8.4f} | divergence_loss: {divergence_loss.item():8.4f} | norm: {norm.item():8.4f}")
+                print(
+                    f"step: {step:8d} | loss: {loss.item():8.4f} | recon_loss: {recon_loss.item():8.4f} | divergence_loss: {divergence_loss.item():8.4f} | norm: {norm.item():8.4f}"
+                )
 
             if step > 0 and step % 1000 == 0:
                 torch.save(ae.state_dict(), f"saved_models/vae/{run.name}.pth")
+                torch.save(optim.state_dict(), f"saved_models/vae/{run.name}_optim.pth")
         except StopIteration:
             print("Dataloader resterting")
             iterator = iter(dl)

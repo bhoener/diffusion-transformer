@@ -16,3 +16,21 @@ WTF IS THIS
 >End-to-End Training Leads to Accelerated Generation
 >Performance; speeding up diffusion training by over 17×
 >and 45× over REPA and vanilla training recipes
+
+
+Hmm side note seems like we give clean images to the VAE then add noise to the latent
+
+---
+
+how do REPA-E?
+
+looks like need image encoder -> DinoV3
+
+seems like:
+encode image (clean)
+interpolate latent with noise
+send to dit
+pick a random layer in the DiT to apply alignment loss (project first, probably 3x3 padding 1 conv)
+get dit output, stop grad and put through batchnorm
+do flow matching loss to DiT
+do alignment loss to VAE
