@@ -43,7 +43,7 @@ from transformers import AutoImageProcessor, AutoModel
 from transformers.image_utils import load_image
 
 url = "http://images.cocodataset.org/val2017/000000039769.jpg"
-image = load_image(url)
+image = load_image(url).resize((32, 32))
 print("Image size:", image.height, image.width)  # [480, 640]
 
 processor = AutoImageProcessor.from_pretrained("facebook/dinov3-vith16plus-pretrain-lvd1689m")
@@ -65,3 +65,9 @@ patch_tokens = hidden_states[:, 1 + model.config.num_register_tokens:, :]
 print("Global Embedding Shape:", cls_token.shape)
 print("Patch Tokens Shape:", patch_tokens.shape)
 
+patch_size = model.config.patch_size
+print("Patch size:", patch_size)
+
+B, N, D = patch_tokens.size()
+H = W = int(N**0.5)
+print(patch_tokens.permute(0, 2, 1).contiguous().view(D, H, W).size())
