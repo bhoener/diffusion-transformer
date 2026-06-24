@@ -2,8 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from transformers import T5EncoderModel, AutoTokenizer, CLIPTextModelWithProjection
+from transformers import AutoImageProcessor, AutoModel
+
 from src.model import DiT
 from src.autoencoder import Autoencoder
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.set_float32_matmul_precision("high")
 
 img_size = 256
 n_channels = 3
@@ -26,28 +32,66 @@ resnet_padding = 1
 
 divergence_weight = 1e-4
 
+ae = Autoencoder(
+    latent_channels=latent_channels,
+    z_channels=z_channels,
+    kernel_size=kernel_size,
+    padding=padding,
+    resnet_blocks_per_layer=resnet_blocks_per_layer,
+    resnet_kernel_size=resnet_kernel_size,
+    resnet_stride=resnet_stride,
+    resnet_padding=resnet_padding,
+    n_channels=n_channels,
+)
+
 # DiT
 d_model = 768
 n_heads = 12
 n_layers_multi_stream = 6
 n_layers_single_stream = 6
 patch_size = 16
+n_timesteps = 100
 
 muon_lr = 1e-2
 adam_lr = 3e-4
 
 
+encoder = T5EncoderModel.from_pretrained("google/t5-v1_1-small", device_map=device)
+tokenizer = AutoTokenizer.from_pretrained("google/t5-v1_1-small")
+
+clip_encoder = CLIPTextModelWithProjection.from_pretrained(
+    "openai/clip-vit-large-patch14", device_map=device
+)
+clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-large-patch14")
 
 
-from transformers import AutoImageProcessor, AutoModel
+dit = DiT(
+    encoder_model=encoder,
+    clip_encoder_model=clip_encoder,
+    d_model=d_model,
+    n_heads=n_heads,
+    n_layers_multi_stream=n_layers_multi_stream,
+    n_layers_single_stream=n_layers_single_stream,
+    patch_size=patch_size,
+    w=img_size,
+    h=img_size,
+    n_timesteps=n_timesteps,
+    n_channels=n_channels,
+)
+
+
 from transformers.image_utils import load_image
 
 url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 image = load_image(url).resize((32, 32))
 print("Image size:", image.height, image.width)  # [480, 640]
 
-processor = AutoImageProcessor.from_pretrained("facebook/dinov3-vith16plus-pretrain-lvd1689m")
-model = AutoModel.from_pretrained("facebook/dinov3-vits16-pretrain-lvd1689m", device_map="auto")
+processor = AutoImageProcessor.from_pretrained(
+    "facebook/dinov3-vith16plus-pretrain-lvd1689m"
+)
+model = AutoModel.from_pretrained(
+    "facebook/dinov3-vits16-pretrain-lvd1689m", device_map="auto"
+)
 
 inputs = processor(images=image, return_tensors="pt").to(model.device)
 
@@ -57,10 +101,10 @@ with torch.inference_mode():
 
 # 4. Parse the output tokens
 # [CLS] token represents the global embedding for the entire image
-cls_token = hidden_states[:, 0, :] 
+cls_token = hidden_states[:, 0, :]
 
 # Patch tokens represent specific regional/local features
-patch_tokens = hidden_states[:, 1 + model.config.num_register_tokens:, :]
+patch_tokens = hidden_states[:, 1 + model.config.num_register_tokens :, :]
 
 print("Global Embedding Shape:", cls_token.shape)
 print("Patch Tokens Shape:", patch_tokens.shape)
@@ -69,5 +113,14 @@ patch_size = model.config.patch_size
 print("Patch size:", patch_size)
 
 B, N, D = patch_tokens.size()
-H = W = int(N**0.5)
-print(patch_tokens.permute(0, 2, 1).contiguous().view(D, H, W).size())
+H = W = int(N**0.5)  # h/w in patches
+patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(D, H, W)
+print(patch_tokens.size())
+
+import matplotlib.pyplot as plt
+
+
+img_x = patch_tokens.permute(1, 2, 0)[:, :, :3]
+print(img_x.size())
+plt.imshow(img_x.detach().cpu().numpy())
+plt.show()
