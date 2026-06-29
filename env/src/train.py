@@ -8,7 +8,7 @@ from transformers import AutoImageProcessor, AutoModel
 from src.model import DiT
 from src.autoencoder import Autoencoder
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 torch.set_float32_matmul_precision("high")
 
 img_size = 256
@@ -44,12 +44,14 @@ ae = Autoencoder(
     n_channels=n_channels,
 )
 
+ae = ae.to(device)
+
 # DiT
 d_model = 768
 n_heads = 12
 n_layers_multi_stream = 6
 n_layers_single_stream = 6
-patch_size = 16
+patch_size = 2
 n_timesteps = 100
 
 muon_lr = 1e-2
@@ -73,17 +75,18 @@ dit = DiT(
     n_layers_multi_stream=n_layers_multi_stream,
     n_layers_single_stream=n_layers_single_stream,
     patch_size=patch_size,
-    w=img_size,
-    h=img_size,
+    w=img_size // 2**(len(ae.encoder.channels) - 1),
+    h=img_size // 2**(len(ae.encoder.channels) - 1),
     n_timesteps=n_timesteps,
-    n_channels=n_channels,
+    n_channels=z_channels,
 )
 
+dit = dit.to(device)
 
 from transformers.image_utils import load_image
 
 url = "http://images.cocodataset.org/val2017/000000039769.jpg"
-image = load_image(url).resize((32, 32))
+image = load_image(url).resize((img_size, img_size))
 print("Image size:", image.height, image.width)  # [480, 640]
 
 processor = AutoImageProcessor.from_pretrained(
@@ -118,9 +121,21 @@ patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(D, H, W)
 print(patch_tokens.size())
 
 import matplotlib.pyplot as plt
+from torchvision.transforms import ToTensor
 
+to_tensor = ToTensor()
 
 img_x = patch_tokens.permute(1, 2, 0)[:, :, :3]
 print(img_x.size())
 plt.imshow(img_x.detach().cpu().numpy())
 plt.show()
+
+proj_conv = nn.Conv2d(d_model, model.config.hidden_size, kernel_size=3, stride=1, padding=1)
+
+latent, _, _ = ae.encode(to_tensor(image).to(device).unsqueeze(0))
+
+print(latent.size())
+
+dit_out = dit(latent, torch.randint(0, 32128, (1, 16)).to(device), torch.randint(0, 32128, (1, 32)).to(device), torch.randint(0, 100,  (1, 1)).to(device))
+
+print(dit_out.size())
