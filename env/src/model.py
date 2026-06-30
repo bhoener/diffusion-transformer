@@ -448,8 +448,8 @@ class DiT(nn.Module):
         nn.init.xavier_normal_(self.depatchify.proj.weight)
 
     def forward(
-        self, img: torch.Tensor, tokens: torch.Tensor, clip_tokens: torch.Tensor, timesteps: torch.Tensor
-    ) -> torch.Tensor:
+        self, img: torch.Tensor, tokens: torch.Tensor, clip_tokens: torch.Tensor, timesteps: torch.Tensor, repa_layer: int = -1,
+    ) -> torch.Tensor | tuple[torch.Tensor]:
         img_x = self.patchify(norm(img))
         B, N, C = img_x.size()
 
@@ -472,10 +472,15 @@ class DiT(nn.Module):
 
         x = torch.cat((img_x, text_x), dim=1)
 
-        for layer in self.single_stream_layers:
+        repa_out = None
+        for i, layer in enumerate(self.single_stream_layers):
             x = layer(x, single_stream_condition)
+            if i == repa_layer:
+                repa_out = x[:, :N, :]
 
         # print(x)
         # print(self.final_ln(x))
-
-        return self.depatchify(x, N) # self.final_ln(x)
+        if repa_out is None:
+            return self.depatchify(x, N) # self.final_ln(x)
+        else:
+            return self.depatchify(x, N), repa_out

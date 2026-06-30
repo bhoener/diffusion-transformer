@@ -34,3 +34,5 @@ pick a random layer in the DiT to apply alignment loss (project first, probably 
 get dit output, stop grad and put through batchnorm
 do flow matching loss to DiT
 do alignment loss to VAE
+
+BRO I WAS READING THE REPA-E DIAGRAM UPSIDE DOWN 😭

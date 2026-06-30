@@ -5,8 +5,15 @@ import torch.nn.functional as F
 from transformers import T5EncoderModel, AutoTokenizer, CLIPTextModelWithProjection
 from transformers import AutoImageProcessor, AutoModel
 
+import matplotlib.pyplot as plt
+from torchvision.transforms import ToTensor, ToPILImage
+from PIL import Image
+
 from src.model import DiT
 from src.autoencoder import Autoencoder
+
+to_tensor = ToTensor()
+to_image = ToPILImage()
 
 device = torch.device("cpu")
 torch.set_float32_matmul_precision("high")
@@ -58,6 +65,14 @@ muon_lr = 1e-2
 adam_lr = 3e-4
 
 
+# training config
+
+batch_size = 8
+num_steps = 1000
+lr_ae = 3e-4
+lr_dit = 1e-2
+
+
 encoder = T5EncoderModel.from_pretrained("google/t5-v1_1-small", device_map=device)
 tokenizer = AutoTokenizer.from_pretrained("google/t5-v1_1-small")
 
@@ -75,41 +90,44 @@ dit = DiT(
     n_layers_multi_stream=n_layers_multi_stream,
     n_layers_single_stream=n_layers_single_stream,
     patch_size=patch_size,
-    w=img_size // 2**(len(ae.encoder.channels) - 1),
-    h=img_size // 2**(len(ae.encoder.channels) - 1),
+    w=img_size // 2 ** (len(ae.encoder.channels) - 1),
+    h=img_size // 2 ** (len(ae.encoder.channels) - 1),
     n_timesteps=n_timesteps,
     n_channels=z_channels,
 )
 
 dit = dit.to(device)
 
-from transformers.image_utils import load_image
-
-url = "http://images.cocodataset.org/val2017/000000039769.jpg"
-image = load_image(url).resize((img_size, img_size))
-print("Image size:", image.height, image.width)  # [480, 640]
+image = to_tensor(Image.open("src/test_img2.png").convert("RGB").resize((img_size, img_size))).to(device)
 
 processor = AutoImageProcessor.from_pretrained(
     "facebook/dinov3-vith16plus-pretrain-lvd1689m"
 )
 model = AutoModel.from_pretrained(
-    "facebook/dinov3-vits16-pretrain-lvd1689m", device_map="auto"
+    "facebook/dinov3-vits16-pretrain-lvd1689m", device_map=device
 )
 
-inputs = processor(images=image, return_tensors="pt").to(model.device)
 
-with torch.inference_mode():
+proj_conv = nn.Conv2d(
+    d_model, model.config.hidden_size, kernel_size=3, stride=1, padding=1
+)
+
+pre_bn = nn.BatchNorm2d(z_channels)
+
+# -------------------------------- training step -------------------------------
+
+ts = torch.rand(batch_size, 1)
+
+print(image.size())
+inputs = processor(image, return_tensors="pt").to(model.device)
+
+with torch.no_grad():
     outputs = model(**inputs)
     hidden_states = outputs.last_hidden_state
-
-# 4. Parse the output tokens
-# [CLS] token represents the global embedding for the entire image
-cls_token = hidden_states[:, 0, :]
 
 # Patch tokens represent specific regional/local features
 patch_tokens = hidden_states[:, 1 + model.config.num_register_tokens :, :]
 
-print("Global Embedding Shape:", cls_token.shape)
 print("Patch Tokens Shape:", patch_tokens.shape)
 
 patch_size = model.config.patch_size
@@ -117,25 +135,56 @@ print("Patch size:", patch_size)
 
 B, N, D = patch_tokens.size()
 H = W = int(N**0.5)  # h/w in patches
-patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(D, H, W)
+patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
 print(patch_tokens.size())
 
-import matplotlib.pyplot as plt
-from torchvision.transforms import ToTensor
+latent, _, _ = ae.encode(image.unsqueeze(0))
 
-to_tensor = ToTensor()
+# weird magic for stopgrad
+# we detach the latent
+# then run the dit on it
+# then we get the grad for latent
+# and then do backward on the un-detached latent
+# and then can do backward normally
+latent_det = latent.detach() 
+latent_det.requires_grad = True
 
-img_x = patch_tokens.permute(1, 2, 0)[:, :, :3]
-print(img_x.size())
-plt.imshow(img_x.detach().cpu().numpy())
-plt.show()
+epsilon = torch.randn_like(latent)
 
-proj_conv = nn.Conv2d(d_model, model.config.hidden_size, kernel_size=3, stride=1, padding=1)
-
-latent, _, _ = ae.encode(to_tensor(image).to(device).unsqueeze(0))
+interpolated = ts * latent + (1-ts) * epsilon
 
 print(latent.size())
 
-dit_out = dit(latent, torch.randint(0, 32128, (1, 16)).to(device), torch.randint(0, 32128, (1, 32)).to(device), torch.randint(0, 100,  (1, 1)).to(device))
+dit_out, repa_out = dit(
+    latent_det,
+    torch.randint(0, 32128, (1, 16)).to(device),
+    torch.randint(0, 32128, (1, 32)).to(device),
+    torch.randint(0, 100, (1, 1)).to(device),
+    repa_layer=4,
+)
 
-print(dit_out.size())
+N_dit = repa_out.size(1)
+
+H_dit = W_dit = img_size // patch_size
+
+print(repa_out.size())
+
+repa_out = repa_out.permute(0, 2, 1).view(B, d_model, H_dit, W_dit)
+
+print(patch_tokens.size(), repa_out.size())
+
+repa_out = F.adaptive_avg_pool2d(repa_out, (H, W))
+
+print(repa_out.size())
+
+projected = proj_conv(repa_out)
+
+projected = projected / (projected.norm() + 1e-7)
+patch_tokens = patch_tokens / (patch_tokens.norm() + 1e-7)
+
+alignment_loss = 1 - F.cosine_similarity(projected, patch_tokens, dim=-1).mean() # max 2 if antiparallel, likely ~1
+
+print("alignment loss:", alignment_loss) 
+
+diffusion_loss = ((dit_out - (latent_det - epsilon)) ** 2).mean()
+
