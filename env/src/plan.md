@@ -36,3 +36,16 @@ do flow matching loss to DiT
 do alignment loss to VAE
 
 BRO I WAS READING THE REPA-E DIAGRAM UPSIDE DOWN 😭
+
+
+
+hmmmmmmmmmmm need LPIPs and GAN loss for VAE in REPA-E
+
+LPIPS: https://arxiv.org/pdf/1801.03924
+
+L2 loss bad becase slight position shift -> big punishment
+
+I don't want to implement VGG so will just use https://github.com/richzhang/perceptualsimilarity
+
+GAN Loss: https://arxiv.org/pdf/1512.09300
+
