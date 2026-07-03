@@ -1,32 +1,120 @@
+import sys
+import os
+from pathlib import Path
+
+sys.path.append("src/")
+
+os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transformers import T5EncoderModel, AutoTokenizer, CLIPTextModelWithProjection
-from transformers import AutoImageProcessor, AutoModel
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.set_float32_matmul_precision("high")
+
+from transformers import T5EncoderModel, AutoTokenizer, CLIPTextModelWithProjection, AutoImageProcessor, AutoModel
+
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+HF_LOCAL_FILES_ONLY = os.getenv("HF_LOCAL_FILES_ONLY", "1").lower() not in {"0", "false", "no", "off"}
+
+
+def log(message: str) -> None:
+    print(message, flush=True)
+
+
+def load_hf_model(model_cls, model_id: str, name: str, **kwargs):
+    source = "local Hugging Face cache" if HF_LOCAL_FILES_ONLY else "Hugging Face"
+    log(f"loading {name} from {source}")
+    try:
+        model = model_cls.from_pretrained(
+            model_id,
+            local_files_only=HF_LOCAL_FILES_ONLY,
+            **kwargs,
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to load {name} ({model_id}) from {source}. "
+            "This script defaults to HF_LOCAL_FILES_ONLY=1 so Transformers does not "
+            "probe the network or start its safetensors conversion thread during startup. "
+            "Set HF_LOCAL_FILES_ONLY=0 if you need to download missing model files."
+        ) from exc
+    return model.to(device).eval()
+
+
+def load_hf_asset(asset_cls, model_id: str, name: str):
+    source = "local Hugging Face cache" if HF_LOCAL_FILES_ONLY else "Hugging Face"
+    log(f"loading {name} from {source}")
+    try:
+        return asset_cls.from_pretrained(model_id, local_files_only=HF_LOCAL_FILES_ONLY)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to load {name} ({model_id}) from {source}. "
+            "Set HF_LOCAL_FILES_ONLY=0 if you need to download missing files."
+        ) from exc
+
+
+log("loading t5")
+encoder = load_hf_model(
+    T5EncoderModel,
+    "google/t5-v1_1-small",
+    "t5 encoder",
+    use_safetensors=False,
+)
+
+log("loading t5 tokenizer")
+t5_tokenizer = load_hf_asset(AutoTokenizer, "google/t5-v1_1-small", "t5 tokenizer")
+
+log("loading clip")
+clip_encoder = load_hf_model(
+    CLIPTextModelWithProjection,
+    "openai/clip-vit-large-patch14",
+    "clip text encoder",
+)
+log("loading clip tokenizer")
+clip_tokenizer = load_hf_asset(AutoTokenizer, "openai/clip-vit-large-patch14", "clip tokenizer")
+
+log("encoder models setup")
+
+import datasets
+print("datasets imported")
 from datasets import load_dataset
 
+print("datasets imported")
+
 import matplotlib.pyplot as plt
+
+print("matplotlib imported")
 from torchvision import transforms
+
+print("torchvision imported")
 from torchvision.transforms import ToTensor, ToPILImage
+
+print("totensor, toimage imported")
 from PIL import Image
 
+print("image imported")
+
 from src.model import DiT
+
+print("model imported")
 from src.autoencoder import Autoencoder
+
+print("autoencoder imported")
 from src.discriminator import Discriminator
+
+print("discriminator imported")
 
 import lpips
 
-
+print("lpips imported")
 
 to_tensor = ToTensor()
 to_image = ToPILImage()
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.set_float32_matmul_precision("high")
-
 torch.manual_seed(42)
-torch.cuda.manual_seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
 
 lpips_loss = lpips.LPIPS(net="vgg")
 lpips_loss = lpips_loss.to(device)
@@ -41,7 +129,6 @@ steps = 1000
 cooldown_steps = 4000
 
 log_every = 10
-
 
 # VAE
 latent_channels = (128, 256, 512, 512)
@@ -79,11 +166,10 @@ n_layers_single_stream = 6
 patch_size = 2
 n_timesteps = 100
 
-
 # training config
 
 batch_size = 8
-num_steps = 1000
+num_steps = int(os.getenv("NUM_STEPS", "1000"))
 lr_ae = 3e-4
 lr_dit_muon = 1e-2
 lr_dit_adamw = 3e-4
@@ -94,23 +180,6 @@ reg_loss_weight = 0.5
 mse_loss_weight = 0.5
 lpips_loss_weight = 1.0
 kl_loss_weight = 1e-4
-
-print("downloading t5")
-
-encoder = T5EncoderModel.from_pretrained("google/t5-v1_1-small", device_map=device)
-
-print("downloading t5 tokenizer")
-t5_tokenizer = AutoTokenizer.from_pretrained("google/t5-v1_1-small")
-
-print("downloading clip")
-
-clip_encoder = CLIPTextModelWithProjection.from_pretrained(
-    "openai/clip-vit-large-patch14", device_map=device
-)
-print("downloading clip tokenizer")
-clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-large-patch14")
-
-print("encoder models setup")
 
 dit = DiT(
     encoder_model=encoder,
@@ -128,11 +197,15 @@ dit = DiT(
 
 dit = dit.to(device)
 
-dino_processor = AutoImageProcessor.from_pretrained(
-    "facebook/dinov3-vith16plus-pretrain-lvd1689m"
+dino_processor = load_hf_asset(
+    AutoImageProcessor,
+    "facebook/dinov3-vith16plus-pretrain-lvd1689m",
+    "dino image processor",
 )
-dino_model = AutoModel.from_pretrained(
-    "facebook/dinov3-vits16-pretrain-lvd1689m", device_map=device
+dino_model = load_hf_model(
+    AutoModel,
+    "facebook/dinov3-vits16-pretrain-lvd1689m",
+    "dino model",
 )
 
 print("dino model setup")
@@ -144,34 +217,38 @@ proj_conv = nn.Conv2d(
 pre_bn = nn.BatchNorm2d(z_channels).to(device)
 
 optimizers = {
-    "DiT": [torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon), torch.optim.AdamW([p for p in dit.parameters() if p.ndim != 2], lr=lr_dit_adamw)],
+    "DiT": [torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon),
+            torch.optim.AdamW([p for p in dit.parameters() if p.ndim != 2], lr=lr_dit_adamw)],
     "VAE": [torch.optim.AdamW([p for p in ae.parameters()], lr=lr_ae)]
 }
 
-ds = load_dataset("arrow", data_files={"data/filtered_ds/*.arrow"}, split="train")
+data_files = str(PROJECT_DIR / "data" / "filtered_ds" / "*.arrow")
+ds = load_dataset("arrow", data_files=data_files, split="train")
 
 transform = transforms.Compose(
     [
         transforms.Resize((img_size, img_size)),
-        transforms.RGB(),
-        transforms.ToImage(),
-        transforms.ToDtype(torch.float32, scale=True),
+        transforms.Lambda(lambda image: image.convert("RGB")),
+        transforms.ToTensor(),
     ]
 )
 
+
 def transform_batch(examples):
-    out = {"pixel_values" : [], "caption": []}
-    for img, cap in zip(examples["jpg"], examples["caption"]):
-        if img is not None and cap is not None:
+    out = {"pixel_values": [], "caption": []}
+    for img, json in zip(examples["jpg"], examples["json"]):
+        if img is not None and json is not None:
             out["pixel_values"].append(transform(img))
-            out["caption"].append(cap)
+            out["caption"].append(json["caption"])
     return out
+
 
 ds = ds.with_transform(transform_batch)
 
-dl = torch.utils.data.DataLoader(ds, batch_size=batch_size, pin_memory=False)
+dl = torch.utils.data.DataLoader(ds, batch_size=batch_size, pin_memory=False, drop_last=True)
 
 iterator = iter(dl)
+last_images = None
 
 print("dataset created")
 
@@ -180,30 +257,40 @@ for step in range(num_steps):
 
     ts = torch.rand(batch_size, 1, 1, 1).to(device)
 
-
     try:
         batch = next(iterator)
         images = batch["pixel_values"].to(device)
+        last_images = images
         captions = batch["caption"]
         dino_inputs = dino_processor(images, return_tensors="pt").to(device)
-        clip_tokens = clip_tokenizer.encode(captions, return_tensors="pt").to(device)
-        t5_tokens = tokenizer.encode(captions, return_tensors="pt").to(device)
-        
+        clip_tokens = clip_tokenizer(
+            captions,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        ).input_ids.to(device)
+        t5_tokens = t5_tokenizer(
+            captions,
+            padding=True,
+            truncation=True,
+            return_tensors="pt",
+        ).input_ids.to(device)
+
     except StopIteration:
         iterator = iter(dl)
         continue
-    
+
     with torch.no_grad():
         outputs = dino_model(**dino_inputs)
         hidden_states = outputs.last_hidden_state
 
     # Patch tokens represent specific regional/local features
-    patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens :, :]
+    patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens:, :]
 
     patch_size = dino_model.config.patch_size
 
     B, N, D = patch_tokens.size()
-    H = W = int(N**0.5)  # h/w in patches
+    H = W = int(N ** 0.5)  # h/w in patches
     patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
 
     latent, mu, logvar = ae.encode(images)
@@ -214,18 +301,18 @@ for step in range(num_steps):
     # then we get the grad for latent
     # and then do backward on the un-detached latent
     # and then can do backward normally
-    latent_det = pre_bn(latent).detach() 
+    latent_det = pre_bn(latent).detach()
     latent_det.requires_grad = True
 
     epsilon = torch.randn_like(latent)
 
-    interpolated = ts * latent + (1-ts) * epsilon
+    interpolated = ts * latent + (1 - ts) * epsilon
 
     dit_out, repa_out = dit(
         latent_det,
         tokens=t5_tokens,
         clip_tokens=clip_tokens,
-        timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).to(device),
+        timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).long().to(device),
         repa_layer=4,
     )
 
@@ -242,7 +329,7 @@ for step in range(num_steps):
     projected = projected / (projected.norm() + 1e-7)
     patch_tokens = patch_tokens / (patch_tokens.norm() + 1e-7)
 
-    loss_alignment = 1 - F.cosine_similarity(projected, patch_tokens, dim=-1).mean() # max 2 if antiparallel, likely ~1
+    loss_alignment = 1 - F.cosine_similarity(projected, patch_tokens, dim=-1).mean()  # max 2 if antiparallel, likely ~1
 
     loss_diffusion = ((dit_out - (latent_det - epsilon)) ** 2).mean()
 
@@ -256,9 +343,9 @@ for step in range(num_steps):
 
     loss_mse = ((images - recon) ** 2).mean()
 
-    loss_kl = (logvar.exp() + mu**2 - 1 - logvar).mean()
-    
-    loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1)
+    loss_kl = (logvar.exp() + mu ** 2 - 1 - logvar).mean()
+
+    loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1).mean()
 
     loss_reg = mse_loss_weight * loss_mse + kl_loss_weight * loss_kl + lpips_loss_weight * loss_lpips
 
@@ -267,7 +354,8 @@ for step in range(num_steps):
     loss = loss_diffusion + repa_loss_weight * loss_alignment + reg_loss_weight * loss_reg
 
     if step % log_every == 0:
-        print(f"step: {step:8d} | loss: {loss.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f}")
+        print(
+            f"step: {step:8d} | loss: {loss.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f}")
 
     for model_optims in optimizers.values():
         for optim in model_optims:
@@ -277,6 +365,13 @@ for step in range(num_steps):
         for optim in model_optims:
             optim.step()
 
-
-plt.imshow(ae(images[0].unsqueeze(0))[-1].permute(0, 2, 3, 1).view(img_size, img_size, 3).detach().cpu().numpy())
-plt.show()
+if last_images is not None:
+    plt.imshow(
+        ae(last_images[0].unsqueeze(0))[-1]
+        .permute(0, 2, 3, 1)
+        .view(img_size, img_size, 3)
+        .detach()
+        .cpu()
+        .numpy()
+    )
+    plt.show()
