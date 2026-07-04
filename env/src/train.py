@@ -10,6 +10,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import  time
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.set_float32_matmul_precision("high")
 
@@ -77,37 +79,20 @@ clip_tokenizer = load_hf_asset(AutoTokenizer, "openai/clip-vit-large-patch14", "
 log("encoder models setup")
 
 import datasets
-print("datasets imported")
 from datasets import load_dataset
 
-print("datasets imported")
-
 import matplotlib.pyplot as plt
-
-print("matplotlib imported")
 from torchvision import transforms
 
-print("torchvision imported")
 from torchvision.transforms import ToTensor, ToPILImage
-
-print("totensor, toimage imported")
 from PIL import Image
 
-print("image imported")
-
 from src.model import DiT
-
-print("model imported")
 from src.autoencoder import Autoencoder
-
-print("autoencoder imported")
 from src.discriminator import Discriminator
-
-print("discriminator imported")
 
 import lpips
 
-print("lpips imported")
 
 to_tensor = ToTensor()
 to_image = ToPILImage()
@@ -123,12 +108,7 @@ print("lpips loss setup")
 
 img_size = 256
 n_channels = 3
-batch_size = 8
-steps = 1000
 
-cooldown_steps = 4000
-
-log_every = 10
 
 # VAE
 latent_channels = (128, 256, 512, 512)
@@ -156,20 +136,23 @@ ae = Autoencoder(
 
 ae = ae.to(device)
 
+latent_size = img_size // 2 ** (len(ae.encoder.channels) - 1)
+
 print("autoencoder created")
 
 # DiT
-d_model = 768
-n_heads = 12
-n_layers_multi_stream = 6
-n_layers_single_stream = 6
-patch_size = 2
+d_model = 512
+n_heads = 8
+n_layers_multi_stream = 4
+n_layers_single_stream = 4
+patch_size = 8
 n_timesteps = 100
+repa_layer=2
 
 # training config
 
-batch_size = 8
-num_steps = int(os.getenv("NUM_STEPS", "1000"))
+batch_size = 4
+num_steps = 1000
 lr_ae = 3e-4
 lr_dit_muon = 1e-2
 lr_dit_adamw = 3e-4
@@ -180,6 +163,8 @@ reg_loss_weight = 0.5
 mse_loss_weight = 0.5
 lpips_loss_weight = 1.0
 kl_loss_weight = 1e-4
+
+log_every = 10
 
 dit = DiT(
     encoder_model=encoder,
@@ -196,6 +181,7 @@ dit = DiT(
 )
 
 dit = dit.to(device)
+dit = torch.compile(dit)
 
 dino_processor = load_hf_asset(
     AutoImageProcessor,
@@ -252,12 +238,49 @@ last_images = None
 
 print("dataset created")
 
+import wandb
+
+run = wandb.init(project="FlowMatching", config={
+    "autoencoder": {
+        "latent_channels": latent_channels,
+        "z_channels": z_channels,
+        "kernel_size": kernel_size,
+        "resnet_blocks_per_layer":resnet_blocks_per_layer,
+        "resnet_kernel_size":resnet_kernel_size,
+        "resnet_stride":resnet_stride,
+        "resnet_padding":resnet_padding,
+        "n_channels":n_channels,
+    },
+    "dit": {
+        "d_model": d_model,
+        "n_heads": n_heads,
+        "n_layers_multi_stream": n_layers_multi_stream,
+        "n_layers_single_stream": n_layers_single_stream,
+        "patch_size": patch_size,
+        "n_timesteps": n_timesteps,
+    },
+    "steps": num_steps,
+    "batch_size": batch_size,
+    "lr_ae" : lr_ae,
+    "lr_dit_muon" : lr_dit_muon,
+    "lr_dit_adamw" : lr_dit_adamw,
+
+    "repa_loss_weight" : repa_loss_weight,
+    "reg_loss_weight" : reg_loss_weight,
+
+    "mse_loss_weight" : mse_loss_weight,
+    "lpips_loss_weight" : lpips_loss_weight,
+    "kl_loss_weight" : kl_loss_weight,
+    "img_size": img_size,
+})
+
 for step in range(num_steps):
     # -------------------------------- training step -------------------------------
 
     ts = torch.rand(batch_size, 1, 1, 1).to(device)
 
     try:
+        t0 = time.time()
         batch = next(iterator)
         images = batch["pixel_values"].to(device)
         last_images = images
@@ -275,25 +298,32 @@ for step in range(num_steps):
             truncation=True,
             return_tensors="pt",
         ).input_ids.to(device)
+        print("time taken to load batch:", time.time() - t0)
 
     except StopIteration:
         iterator = iter(dl)
         continue
 
+    t0 = time.time()
     with torch.no_grad():
-        outputs = dino_model(**dino_inputs)
+        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+            outputs = dino_model(**dino_inputs)
         hidden_states = outputs.last_hidden_state
+    print("dino model runtime:", time.time() - t0)
 
     # Patch tokens represent specific regional/local features
     patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens:, :]
 
-    patch_size = dino_model.config.patch_size
+    patch_size_dino = dino_model.config.patch_size
 
     B, N, D = patch_tokens.size()
-    H = W = int(N ** 0.5)  # h/w in patches
+    H = W = int(N**0.5)
     patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
 
-    latent, mu, logvar = ae.encode(images)
+    t0 = time.time()
+    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+        latent, mu, logvar = ae.encode(images)
+    print("encode runtime:", time.time() - t0)
 
     # weird magic for stopgrad
     # we detach the latent
@@ -308,23 +338,27 @@ for step in range(num_steps):
 
     interpolated = ts * latent + (1 - ts) * epsilon
 
-    dit_out, repa_out = dit(
-        latent_det,
-        tokens=t5_tokens,
-        clip_tokens=clip_tokens,
-        timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).long().to(device),
-        repa_layer=4,
-    )
+    t0 = time.time()
+    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+        dit_out, repa_out = dit(
+            latent_det,
+            tokens=t5_tokens,
+            clip_tokens=clip_tokens,
+            timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).long().to(device),
+            repa_layer=repa_layer,
+        )
+    print("dit runtime:", time.time() - t0)
 
     N_dit = repa_out.size(1)
 
-    H_dit = W_dit = img_size // patch_size
+    H_dit = W_dit = latent_size // patch_size
 
     repa_out = repa_out.permute(0, 2, 1).view(B, d_model, H_dit, W_dit)
 
     repa_out = F.adaptive_avg_pool2d(repa_out, (H, W))
 
-    projected = proj_conv(repa_out)
+    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+        projected = proj_conv(repa_out)
 
     projected = projected / (projected.norm() + 1e-7)
     patch_tokens = patch_tokens / (patch_tokens.norm() + 1e-7)
@@ -339,7 +373,10 @@ for step in range(num_steps):
 
     # regularization losses
 
-    recon = ae.decode(latent)
+    t0 = time.time()
+    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+        recon = ae.decode(latent)
+    print("decode runtime:", time.time() - t0)
 
     loss_mse = ((images - recon) ** 2).mean()
 
@@ -353,17 +390,32 @@ for step in range(num_steps):
 
     loss = loss_diffusion + repa_loss_weight * loss_alignment + reg_loss_weight * loss_reg
 
-    if step % log_every == 0:
-        print(
-            f"step: {step:8d} | loss: {loss.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f}")
 
     for model_optims in optimizers.values():
         for optim in model_optims:
             optim.zero_grad()
+    t0 = time.time()
     loss.backward()
+    print("backward runtime:", time.time() - t0)
+    norm = torch.nn.utils.clip_grad_norm_(ae.parameters(), 1.0)
     for model_optims in optimizers.values():
         for optim in model_optims:
             optim.step()
+
+    if step % log_every == 0:
+        print(
+            f"step: {step:8d} | loss: {loss.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm: {norm.item():8.4f}")
+
+    wandb.log({"step": step,
+               "loss/total": loss.item(),
+               "loss/alignment": loss_alignment.item(),
+               "loss/diffusion": loss_diffusion.item(),
+               "loss/reg/total": loss_reg.item(),
+               "loss/reg/mse": loss_mse.item(),
+               "loss/reg/kl": loss_kl.item(),
+               "loss/reg/lpips": loss_lpips.item(),
+               "norm": norm.item()
+               })
 
 if last_images is not None:
     plt.imshow(
