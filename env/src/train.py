@@ -9,11 +9,15 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch._functorch.config
 
 import  time
 
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.set_float32_matmul_precision("high")
+# maybe remove
+torch._functorch.config.donated_buffer = False
 
 from transformers import T5EncoderModel, AutoTokenizer, CLIPTextModelWithProjection, AutoImageProcessor, AutoModel
 
