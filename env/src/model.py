@@ -448,10 +448,10 @@ class DiT(nn.Module):
         nn.init.xavier_normal_(self.depatchify.proj.weight)
 
     def forward(
-        self, img: torch.Tensor, tokens: torch.Tensor, clip_tokens: torch.Tensor, timesteps: torch.Tensor, repa_layer: int = -1,
+        self, latent: torch.Tensor, tokens: torch.Tensor, clip_tokens: torch.Tensor, timesteps: torch.Tensor, repa_layer: int = -1,
     ) -> torch.Tensor | tuple[torch.Tensor]:
-        img_x = self.patchify(norm(img))
-        B, N, C = img_x.size()
+        latent_x = self.patchify(norm(latent))
+        B, N, C = latent_x.size()
 
         with torch.no_grad():
             encoder_hiddens = self.encoder(tokens, output_hidden_states=False).last_hidden_state
@@ -468,9 +468,9 @@ class DiT(nn.Module):
         ).view(B, self.n_layers_single_stream, -1)
 
         for layer in self.multi_stream_layers:
-            img_x, text_x = layer(img_x, text_x, multi_stream_condition)
+            latent_x, text_x = layer(latent_x, text_x, multi_stream_condition)
 
-        x = torch.cat((img_x, text_x), dim=1)
+        x = torch.cat((latent_x, text_x), dim=1)
 
         repa_out = None
         for i, layer in enumerate(self.single_stream_layers):

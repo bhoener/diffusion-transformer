@@ -156,7 +156,7 @@ repa_layer=2
 # training config
 
 batch_size = 4
-num_steps = 1000
+num_steps = 50000
 lr_ae = 3e-4
 lr_dit_muon = 1e-2
 lr_dit_adamw = 3e-4
@@ -169,6 +169,7 @@ lpips_loss_weight = 1.0
 kl_loss_weight = 1e-4
 
 log_every = 10
+save_every = 1000
 
 dit = DiT(
     encoder_model=encoder,
@@ -207,9 +208,9 @@ proj_conv = nn.Conv2d(
 pre_bn = nn.BatchNorm2d(z_channels).to(device)
 
 optimizers = {
-    "DiT": [torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon),
+    "dit": [torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon),
             torch.optim.AdamW([p for p in dit.parameters() if p.ndim != 2], lr=lr_dit_adamw)],
-    "VAE": [torch.optim.AdamW([p for p in ae.parameters()], lr=lr_ae)]
+    "vae": [torch.optim.AdamW([p for p in ae.parameters()], lr=lr_ae)]
 }
 
 data_files = str(PROJECT_DIR / "data" / "filtered_ds" / "*.arrow")
@@ -284,7 +285,7 @@ for step in range(num_steps):
     ts = torch.rand(batch_size, 1, 1, 1).to(device)
 
     try:
-        t0 = time.time()
+        #t0 = time.time()
         batch = next(iterator)
         images = batch["pixel_values"].to(device)
         last_images = images
@@ -302,32 +303,30 @@ for step in range(num_steps):
             truncation=True,
             return_tensors="pt",
         ).input_ids.to(device)
-        print("time taken to load batch:", time.time() - t0)
+        #print("time taken to load batch:", time.time() - t0)
 
     except StopIteration:
         iterator = iter(dl)
         continue
 
-    t0 = time.time()
+    #t0 = time.time()
     with torch.no_grad():
         with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
             outputs = dino_model(**dino_inputs)
         hidden_states = outputs.last_hidden_state
-    print("dino model runtime:", time.time() - t0)
+    #print("dino model runtime:", time.time() - t0)
 
     # Patch tokens represent specific regional/local features
     patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens:, :]
-
-    patch_size_dino = dino_model.config.patch_size
 
     B, N, D = patch_tokens.size()
     H = W = int(N**0.5)
     patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
 
-    t0 = time.time()
+    #t0 = time.time()
     with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
         latent, mu, logvar = ae.encode(images)
-    print("encode runtime:", time.time() - t0)
+    #print("encode runtime:", time.time() - t0)
 
     # weird magic for stopgrad
     # we detach the latent
@@ -342,7 +341,7 @@ for step in range(num_steps):
 
     interpolated = ts * latent + (1 - ts) * epsilon
 
-    t0 = time.time()
+    #t0 = time.time()
     with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
         dit_out, repa_out = dit(
             latent_det,
@@ -351,9 +350,7 @@ for step in range(num_steps):
             timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).long().to(device),
             repa_layer=repa_layer,
         )
-    print("dit runtime:", time.time() - t0)
-
-    N_dit = repa_out.size(1)
+    #print("dit runtime:", time.time() - t0)
 
     H_dit = W_dit = latent_size // patch_size
 
@@ -377,10 +374,10 @@ for step in range(num_steps):
 
     # regularization losses
 
-    t0 = time.time()
+    #t0 = time.time()
     with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
         recon = ae.decode(latent)
-    print("decode runtime:", time.time() - t0)
+    #print("decode runtime:", time.time() - t0)
 
     loss_mse = ((images - recon) ** 2).mean()
 
@@ -398,9 +395,9 @@ for step in range(num_steps):
     for model_optims in optimizers.values():
         for optim in model_optims:
             optim.zero_grad()
-    t0 = time.time()
+    #t0 = time.time()
     loss.backward()
-    print("backward runtime:", time.time() - t0)
+    #print("backward runtime:", time.time() - t0)
     norm = torch.nn.utils.clip_grad_norm_(ae.parameters(), 1.0)
     for model_optims in optimizers.values():
         for optim in model_optims:
@@ -409,6 +406,17 @@ for step in range(num_steps):
     if step % log_every == 0:
         print(
             f"step: {step:8d} | loss: {loss.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm: {norm.item():8.4f}")
+    if step % save_every == 0:
+        if not os.path.exists(f"../saved_models/dit/{run.name}"):
+            os.makedirs(f"../saved_models/dit/{run.name}")
+
+        torch.save(dit.state_dict(), f"../saved_models/dit/{run.name}/dit.pth")
+        torch.save(ae.state_dict(), f"../saved_models/dit/{run.name}/ae.pth")
+        torch.save(pre_bn.state_dict(), f"../saved_models/dit/{run.name}/bn.pth")
+        for model_type, optims in optimizers.items():
+            for optim in optims:
+                torch.save(optim.state_dict(), f"../saved_models/dit/{run.name}/opt_{model_type}_{optim.__class__.__name__}.pth")
+
 
     wandb.log({"step": step,
                "loss/total": loss.item(),

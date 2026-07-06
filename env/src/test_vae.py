@@ -1,3 +1,6 @@
+import  sys
+sys.path.append("src/")
+
 import torch
 from src.autoencoder import Autoencoder
 from torchvision.transforms import ToTensor
@@ -32,10 +35,10 @@ ae = Autoencoder(
 
 to_tensor = ToTensor()
 
-src = Image.open("src/test_img2.png").convert("RGB").resize((img_size, img_size))
+src = Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))
 input_img = to_tensor(src).unsqueeze(0).to(device)
 
-ae.load_state_dict({k.replace("_orig_mod.", "") : v for k, v in torch.load("saved_models/vae/wise-eon-70.pth").items()})
+ae.load_state_dict({k.replace("_orig_mod.", "") : v for k, v in torch.load("../saved_models/dit/pious-violet-25/ae.pth").items()})
 
 print(input_img.size())
 
