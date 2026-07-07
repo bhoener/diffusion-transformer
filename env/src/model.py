@@ -478,9 +478,9 @@ class DiT(nn.Module):
             if i == repa_layer:
                 repa_out = x[:, :N, :]
 
-        # print(x)
-        # print(self.final_ln(x))
+        x = self.final_ln(x)
+
         if repa_out is None:
-            return self.depatchify(x, N) # self.final_ln(x)
+            return self.depatchify(x, N)
         else:
             return self.depatchify(x, N), repa_out

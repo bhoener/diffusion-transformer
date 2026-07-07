@@ -156,7 +156,8 @@ repa_layer=2
 # training config
 
 batch_size = 4
-num_steps = 50000
+grad_accum_steps=4
+num_steps = 12500
 lr_ae = 3e-4
 lr_dit_muon = 1e-2
 lr_dit_adamw = 3e-4
@@ -166,7 +167,7 @@ reg_loss_weight = 0.5
 
 mse_loss_weight = 0.5
 lpips_loss_weight = 1.0
-kl_loss_weight = 1e-4
+kl_loss_weight = 1e-2
 
 log_every = 10
 save_every = 1000
@@ -279,133 +280,142 @@ run = wandb.init(project="FlowMatching", config={
     "img_size": img_size,
 })
 
-for step in range(num_steps):
+for step in range(num_steps + 1):
     # -------------------------------- training step -------------------------------
-
-    ts = torch.rand(batch_size, 1, 1, 1).to(device)
-
-    try:
-        #t0 = time.time()
-        batch = next(iterator)
-        images = batch["pixel_values"].to(device)
-        last_images = images
-        captions = batch["caption"]
-        dino_inputs = dino_processor(images, return_tensors="pt").to(device)
-        clip_tokens = clip_tokenizer(
-            captions,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        ).input_ids.to(device)
-        t5_tokens = t5_tokenizer(
-            captions,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        ).input_ids.to(device)
-        #print("time taken to load batch:", time.time() - t0)
-
-    except StopIteration:
-        iterator = iter(dl)
-        continue
-
-    #t0 = time.time()
-    with torch.no_grad():
-        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
-            outputs = dino_model(**dino_inputs)
-        hidden_states = outputs.last_hidden_state
-    #print("dino model runtime:", time.time() - t0)
-
-    # Patch tokens represent specific regional/local features
-    patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens:, :]
-
-    B, N, D = patch_tokens.size()
-    H = W = int(N**0.5)
-    patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
-
-    #t0 = time.time()
-    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
-        latent, mu, logvar = ae.encode(images)
-    #print("encode runtime:", time.time() - t0)
-
-    # weird magic for stopgrad
-    # we detach the latent
-    # then run the dit on it
-    # then we get the grad for latent
-    # and then do backward on the un-detached latent
-    # and then can do backward normally
-    latent_det = pre_bn(latent).detach()
-    latent_det.requires_grad = True
-
-    epsilon = torch.randn_like(latent)
-
-    interpolated = ts * latent + (1 - ts) * epsilon
-
-    #t0 = time.time()
-    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
-        dit_out, repa_out = dit(
-            latent_det,
-            tokens=t5_tokens,
-            clip_tokens=clip_tokens,
-            timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).long().to(device),
-            repa_layer=repa_layer,
-        )
-    #print("dit runtime:", time.time() - t0)
-
-    H_dit = W_dit = latent_size // patch_size
-
-    repa_out = repa_out.permute(0, 2, 1).view(B, d_model, H_dit, W_dit)
-
-    repa_out = F.adaptive_avg_pool2d(repa_out, (H, W))
-
-    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
-        projected = proj_conv(repa_out)
-
-    projected = projected / (projected.norm() + 1e-7)
-    patch_tokens = patch_tokens / (patch_tokens.norm() + 1e-7)
-
-    loss_alignment = 1 - F.cosine_similarity(projected, patch_tokens, dim=-1).mean()  # max 2 if antiparallel, likely ~1
-
-    loss_diffusion = ((dit_out - (latent_det - epsilon)) ** 2).mean()
-
-    grad_latent = torch.autograd.grad(loss_alignment, latent_det, retain_graph=True)[0]
-
-    latent.backward(grad_latent, retain_graph=True)
-
-    # regularization losses
-
-    #t0 = time.time()
-    with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
-        recon = ae.decode(latent)
-    #print("decode runtime:", time.time() - t0)
-
-    loss_mse = ((images - recon) ** 2).mean()
-
-    loss_kl = (logvar.exp() + mu ** 2 - 1 - logvar).mean()
-
-    loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1).mean()
-
-    loss_reg = mse_loss_weight * loss_mse + kl_loss_weight * loss_kl + lpips_loss_weight * loss_lpips
-
-    # total loss
-
-    loss = loss_diffusion + repa_loss_weight * loss_alignment + reg_loss_weight * loss_reg
-
-
     for model_optims in optimizers.values():
         for optim in model_optims:
             optim.zero_grad()
-    #t0 = time.time()
-    loss.backward()
-    #print("backward runtime:", time.time() - t0)
-    norm = torch.nn.utils.clip_grad_norm_(ae.parameters(), 1.0)
+
+    loss_accum = 0.0
+
+    for micro_step in range(grad_accum_steps):
+        ts = torch.rand(batch_size, 1, 1, 1).to(device)
+
+        try:
+            #t0 = time.time()
+            batch = next(iterator)
+            images = batch["pixel_values"].to(device)
+            last_images = images
+            captions = batch["caption"]
+            dino_inputs = dino_processor(images, return_tensors="pt").to(device)
+            clip_tokens = clip_tokenizer(
+                captions,
+                padding=True,
+                truncation=True,
+                return_tensors="pt",
+            ).input_ids.to(device)
+            t5_tokens = t5_tokenizer(
+                captions,
+                padding=True,
+                truncation=True,
+                return_tensors="pt",
+            ).input_ids.to(device)
+            #print("time taken to load batch:", time.time() - t0)
+
+        except StopIteration:
+            iterator = iter(dl)
+            continue
+
+        #t0 = time.time()
+        with torch.no_grad():
+            with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+                outputs = dino_model(**dino_inputs)
+            hidden_states = outputs.last_hidden_state
+        #print("dino model runtime:", time.time() - t0)
+
+        # Patch tokens represent specific regional/local features
+        patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens:, :]
+
+        B, N, D = patch_tokens.size()
+        H = W = int(N**0.5)
+        patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
+
+        #t0 = time.time()
+        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+            latent, mu, logvar = ae.encode(images)
+        #print("encode runtime:", time.time() - t0)
+
+        # weird magic for stopgrad
+        # we detach the latent
+        # then run the dit on it
+        # then we get the grad for latent
+        # and then do backward on the un-detached latent
+        # and then can do backward normally
+        latent_det = pre_bn(latent).detach()
+        latent_det.requires_grad = True
+
+        epsilon = torch.randn_like(latent)
+
+        interpolated = ts * latent + (1 - ts) * epsilon
+
+        #t0 = time.time()
+        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+            dit_out, repa_out = dit(
+                latent_det,
+                tokens=t5_tokens,
+                clip_tokens=clip_tokens,
+                timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).long().to(device),
+                repa_layer=repa_layer,
+            )
+        #print("dit runtime:", time.time() - t0)
+
+        H_dit = W_dit = latent_size // patch_size
+
+        repa_out = repa_out.permute(0, 2, 1).view(B, d_model, H_dit, W_dit)
+
+        repa_out = F.adaptive_avg_pool2d(repa_out, (H, W))
+
+        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+            projected = proj_conv(repa_out)
+
+        projected = projected / (projected.norm() + 1e-7)
+        patch_tokens = patch_tokens / (patch_tokens.norm() + 1e-7)
+
+        loss_alignment = 1 - F.cosine_similarity(projected, patch_tokens, dim=-1).mean()  # max 2 if antiparallel, likely ~1
+        loss_alignment = loss_alignment / grad_accum_steps
+
+        loss_diffusion = ((dit_out - (latent_det - epsilon)) ** 2).mean()
+
+        grad_latent = torch.autograd.grad(loss_alignment, latent_det, retain_graph=True)[0]
+
+        latent.backward(grad_latent, retain_graph=True)
+
+        # regularization losses
+
+        #t0 = time.time()
+        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+            recon = ae.decode(latent)
+        #print("decode runtime:", time.time() - t0)
+
+        loss_mse = ((images - recon) ** 2).mean()
+
+        loss_kl = - 0.5 * (1 + logvar - mu** 2 - logvar.exp()).mean()
+
+        loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1).mean()
+
+        loss_reg = mse_loss_weight * loss_mse + kl_loss_weight * loss_kl + lpips_loss_weight * loss_lpips
+
+        # total loss
+
+        loss = loss_diffusion + repa_loss_weight * loss_alignment + reg_loss_weight * loss_reg
+
+
+        loss = loss / grad_accum_steps
+        #t0 = time.time()
+        loss.backward()
+        #print("backward runtime:", time.time() - t0)
+
+        loss_accum += loss.detach()
+    norm_ae = torch.nn.utils.clip_grad_norm_(ae.parameters(), 1.0)
+    norm_dit = torch.nn.utils.clip_grad_norm_(dit.parameters(), 1.0)
+
     for model_optims in optimizers.values():
         for optim in model_optims:
             optim.step()
 
     if step % log_every == 0:
         print(
-            f"step: {step:8d} | loss: {loss.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm: {norm.item():8.4f}")
+            f"step: {step:8d} | loss: {loss_accum.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm ae: {norm_ae.item():8.4f} | norm dit: {norm_dit.item():8.4f}")
     if step % save_every == 0:
         if not os.path.exists(f"../saved_models/dit/{run.name}"):
             os.makedirs(f"../saved_models/dit/{run.name}")
@@ -419,14 +429,15 @@ for step in range(num_steps):
 
 
     wandb.log({"step": step,
-               "loss/total": loss.item(),
+               "loss/total": loss_accum.item(),
                "loss/alignment": loss_alignment.item(),
                "loss/diffusion": loss_diffusion.item(),
                "loss/reg/total": loss_reg.item(),
                "loss/reg/mse": loss_mse.item(),
                "loss/reg/kl": loss_kl.item(),
                "loss/reg/lpips": loss_lpips.item(),
-               "norm": norm.item()
+               "norm_ae": norm_ae.item(),
+               "norm_dit": norm_dit.item(),
                })
 
 if last_images is not None:

@@ -8,8 +8,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 1000
-DIT_STATE_DICT_PATH = "../saved_models/dit/pious-violet-25/dit.pth"
-VAE_STATE_DICT_PATH = "../saved_models/dit/pious-violet-25/ae.pth"
+MODEL_PATH = "../saved_models/dit/wild-sun-26/"
 
 from tqdm import tqdm
 import math
@@ -131,7 +130,7 @@ ae = Autoencoder(
 )
 
 ae = ae.to(device)
-ae.load_state_dict(torch.load(VAE_STATE_DICT_PATH))
+ae.load_state_dict(torch.load(os.path.join(MODEL_PATH, "ae.pth")))
 
 latent_size = img_size // 2 ** (len(ae.encoder.channels) - 1)
 
@@ -179,7 +178,7 @@ dit = DiT(
 )
 
 dit = dit.to(device)
-dit.load_state_dict({k.replace("_orig_mod.", ""): v for k, v in torch.load(DIT_STATE_DICT_PATH).items()})
+dit.load_state_dict({k.replace("_orig_mod.", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit.pth")).items()})
 
 
 dino_processor = load_hf_asset(
@@ -197,8 +196,8 @@ dino_model = load_hf_model(
 
 print("dino model setup")
 
-# todo: maybe add batchnorm
-
+pre_bn = nn.BatchNorm2d(z_channels).to(device)
+pre_bn.load_state_dict(torch.load(os.path.join(MODEL_PATH, "bn.pth")))
 
 with torch.no_grad():
     while (prompt := input("Enter a prompt: ")).lower() not in {"q", "quit"}:
@@ -209,6 +208,7 @@ with torch.no_grad():
 
 
         for timestep in tqdm(range(GENERATION_STEPS)):
+            latent = pre_bn(latent)
             dit_out = dit(latent, tokens, clip_tokens, torch.tensor([math.floor(timestep / GENERATION_STEPS) * (dit.n_timesteps - 1)]).view(-1, 1, 1, 1).to(device))
             latent = latent + dit_out / GENERATION_STEPS
 
