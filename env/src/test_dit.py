@@ -196,7 +196,7 @@ dino_model = load_hf_model(
 
 print("dino model setup")
 
-pre_bn = nn.BatchNorm2d(z_channels).to(device)
+pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
 pre_bn.load_state_dict(torch.load(os.path.join(MODEL_PATH, "bn.pth")))
 
 with torch.no_grad():

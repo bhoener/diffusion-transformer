@@ -49,3 +49,8 @@ I don't want to implement VGG so will just use https://github.com/richzhang/perc
 
 GAN Loss: https://arxiv.org/pdf/1512.09300
 
+
+need to do:
+
+- cfg
+- ema

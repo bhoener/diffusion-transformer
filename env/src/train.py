@@ -162,12 +162,15 @@ lr_ae = 3e-4
 lr_dit_muon = 1e-2
 lr_dit_adamw = 3e-4
 
-repa_loss_weight = 0.1
+repa_loss_weight = 0.5
 reg_loss_weight = 0.5
 
-mse_loss_weight = 0.5
+repa_weight_vae = 1.5
+repa_weight_dit = 0.5
+
+mse_loss_weight = 1.0
 lpips_loss_weight = 1.0
-kl_loss_weight = 1e-2
+kl_loss_weight = 1.0
 
 log_every = 10
 save_every = 1000
@@ -206,7 +209,7 @@ proj_conv = nn.Conv2d(
     d_model, dino_model.config.hidden_size, kernel_size=3, stride=1, padding=1
 ).to(device)
 
-pre_bn = nn.BatchNorm2d(z_channels).to(device)
+pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
 
 optimizers = {
     "dit": [torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon),
@@ -374,9 +377,12 @@ for step in range(num_steps + 1):
         loss_alignment = 1 - F.cosine_similarity(projected, patch_tokens, dim=-1).mean()  # max 2 if antiparallel, likely ~1
         loss_alignment = loss_alignment / grad_accum_steps
 
+        loss_alignment_vae = repa_loss_weight * repa_weight_vae * loss_alignment
+        loss_alignment_dit = repa_loss_weight * repa_weight_dit * loss_alignment
+
         loss_diffusion = ((dit_out - (latent_det - epsilon)) ** 2).mean()
 
-        grad_latent = torch.autograd.grad(loss_alignment, latent_det, retain_graph=True)[0]
+        grad_latent = torch.autograd.grad(loss_alignment_vae, latent_det, retain_graph=True)[0]
 
         latent.backward(grad_latent, retain_graph=True)
 
@@ -389,15 +395,14 @@ for step in range(num_steps + 1):
 
         loss_mse = ((images - recon) ** 2).mean()
 
-        loss_kl = - 0.5 * (1 + logvar - mu** 2 - logvar.exp()).mean()
-
+        loss_kl = - kl_loss_weight * (1 + logvar - mu** 2 - logvar.exp()).mean()
         loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1).mean()
 
         loss_reg = mse_loss_weight * loss_mse + kl_loss_weight * loss_kl + lpips_loss_weight * loss_lpips
 
         # total loss
 
-        loss = loss_diffusion + repa_loss_weight * loss_alignment + reg_loss_weight * loss_reg
+        loss = loss_diffusion + loss_alignment_dit + reg_loss_weight * loss_reg
 
 
         loss = loss / grad_accum_steps
