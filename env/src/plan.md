@@ -54,3 +54,14 @@ need to do:
 
 - cfg
 - ema
+
+but first: kl divergence loss is broken
+i think at first the alignment loss was never getting backpropped
+because i did zero grad after its backward
+but now that the zero grad is before the training step, the alignment is actually doing something
+and it is causing kl to spike
+
+- maybe zero-init conv projection?
+
+
+HOLY I AM STUPID I WASNT PASSING THE NOISED LATENTS INTO THE DIT

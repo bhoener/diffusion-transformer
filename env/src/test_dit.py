@@ -8,7 +8,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 1000
-MODEL_PATH = "../saved_models/dit/wild-sun-26/"
+MODEL_PATH = "../saved_models/dit/stoic-dream-57/"
 
 from tqdm import tqdm
 import math
@@ -144,24 +144,6 @@ n_layers_single_stream = 4
 patch_size = 8
 n_timesteps = 100
 repa_layer=2
-
-# training config
-
-batch_size = 4
-num_steps = 50000
-lr_ae = 3e-4
-lr_dit_muon = 1e-2
-lr_dit_adamw = 3e-4
-
-repa_loss_weight = 0.1
-reg_loss_weight = 0.5
-
-mse_loss_weight = 0.5
-lpips_loss_weight = 1.0
-kl_loss_weight = 1e-4
-
-log_every = 10
-save_every = 1000
 
 dit = DiT(
     encoder_model=encoder,

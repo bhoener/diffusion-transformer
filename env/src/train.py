@@ -124,8 +124,6 @@ resnet_kernel_size = 3
 resnet_stride = 1
 resnet_padding = 1
 
-divergence_weight = 1e-4
-
 ae = Autoencoder(
     latent_channels=latent_channels,
     z_channels=z_channels,
@@ -168,12 +166,12 @@ reg_loss_weight = 0.5
 repa_weight_vae = 1.5
 repa_weight_dit = 0.5
 
-mse_loss_weight = 1.0
+mse_loss_weight = 0.1
 lpips_loss_weight = 1.0
-kl_loss_weight = 1.0
+kl_loss_weight = 1e-4
 
 log_every = 10
-save_every = 1000
+save_every = 500
 
 dit = DiT(
     encoder_model=encoder,
@@ -209,12 +207,15 @@ proj_conv = nn.Conv2d(
     d_model, dino_model.config.hidden_size, kernel_size=3, stride=1, padding=1
 ).to(device)
 
+nn.init.zeros_(proj_conv.weight.data)
+
 pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
 
 optimizers = {
     "dit": [torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon),
             torch.optim.AdamW([p for p in dit.parameters() if p.ndim != 2], lr=lr_dit_adamw)],
-    "vae": [torch.optim.AdamW([p for p in ae.parameters()], lr=lr_ae)]
+    "vae": [torch.optim.AdamW([p for p in ae.parameters()], lr=lr_ae)],
+    "proj_conv": [torch.optim.AdamW(proj_conv.parameters(), lr=lr_ae)],
 }
 
 data_files = str(PROJECT_DIR / "data" / "filtered_ds" / "*.arrow")
@@ -295,7 +296,6 @@ for step in range(num_steps + 1):
         ts = torch.rand(batch_size, 1, 1, 1).to(device)
 
         try:
-            #t0 = time.time()
             batch = next(iterator)
             images = batch["pixel_values"].to(device)
             last_images = images
@@ -313,54 +313,44 @@ for step in range(num_steps + 1):
                 truncation=True,
                 return_tensors="pt",
             ).input_ids.to(device)
-            #print("time taken to load batch:", time.time() - t0)
 
         except StopIteration:
             iterator = iter(dl)
             continue
 
-        #t0 = time.time()
         with torch.no_grad():
             with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
                 outputs = dino_model(**dino_inputs)
             hidden_states = outputs.last_hidden_state
-        #print("dino model runtime:", time.time() - t0)
-
-        # Patch tokens represent specific regional/local features
+            
         patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens:, :]
 
         B, N, D = patch_tokens.size()
         H = W = int(N**0.5)
         patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
 
-        #t0 = time.time()
         with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
             latent, mu, logvar = ae.encode(images)
-        #print("encode runtime:", time.time() - t0)
+            latent_bn = pre_bn(latent)
 
-        # weird magic for stopgrad
-        # we detach the latent
-        # then run the dit on it
-        # then we get the grad for latent
-        # and then do backward on the un-detached latent
-        # and then can do backward normally
-        latent_det = pre_bn(latent).detach()
+
+        # print(logvar.std().item(), mu.std().item())
+
+        latent_det = latent_bn.detach()
         latent_det.requires_grad = True
 
         epsilon = torch.randn_like(latent)
 
-        interpolated = ts * latent + (1 - ts) * epsilon
+        interpolated = ts * latent_det + (1 - ts) * epsilon
 
-        #t0 = time.time()
         with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
             dit_out, repa_out = dit(
-                latent_det,
+                interpolated,
                 tokens=t5_tokens,
                 clip_tokens=clip_tokens,
                 timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1)).long().to(device),
                 repa_layer=repa_layer,
             )
-        #print("dit runtime:", time.time() - t0)
 
         H_dit = W_dit = latent_size // patch_size
 
@@ -371,11 +361,7 @@ for step in range(num_steps + 1):
         with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
             projected = proj_conv(repa_out)
 
-        projected = projected / (projected.norm() + 1e-7)
-        patch_tokens = patch_tokens / (patch_tokens.norm() + 1e-7)
-
-        loss_alignment = 1 - F.cosine_similarity(projected, patch_tokens, dim=-1).mean()  # max 2 if antiparallel, likely ~1
-        loss_alignment = loss_alignment / grad_accum_steps
+        loss_alignment = 1 - F.cosine_similarity(projected, patch_tokens, dim=1).mean()  # max 2 if antiparallel, likely ~1
 
         loss_alignment_vae = repa_loss_weight * repa_weight_vae * loss_alignment
         loss_alignment_dit = repa_loss_weight * repa_weight_dit * loss_alignment
@@ -384,33 +370,31 @@ for step in range(num_steps + 1):
 
         grad_latent = torch.autograd.grad(loss_alignment_vae, latent_det, retain_graph=True)[0]
 
-        latent.backward(grad_latent, retain_graph=True)
 
-        # regularization losses
-
-        #t0 = time.time()
         with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
             recon = ae.decode(latent)
-        #print("decode runtime:", time.time() - t0)
+ 
 
         loss_mse = ((images - recon) ** 2).mean()
 
-        loss_kl = - kl_loss_weight * (1 + logvar - mu** 2 - logvar.exp()).mean()
+        loss_kl = (logvar.exp() + mu**2 - 1 - logvar).mean()
         loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1).mean()
 
         loss_reg = mse_loss_weight * loss_mse + kl_loss_weight * loss_kl + lpips_loss_weight * loss_lpips
 
+        # weird trick to give non-detached latent the same grad as detached
+        loss_repa = (latent_bn * grad_latent.detach()).sum()
+        
         # total loss
 
-        loss = loss_diffusion + loss_alignment_dit + reg_loss_weight * loss_reg
-
+        loss = loss_diffusion + loss_alignment_dit + reg_loss_weight * loss_reg + loss_repa
 
         loss = loss / grad_accum_steps
-        #t0 = time.time()
+
         loss.backward()
-        #print("backward runtime:", time.time() - t0)
 
         loss_accum += loss.detach()
+        
     norm_ae = torch.nn.utils.clip_grad_norm_(ae.parameters(), 1.0)
     norm_dit = torch.nn.utils.clip_grad_norm_(dit.parameters(), 1.0)
 
@@ -421,7 +405,7 @@ for step in range(num_steps + 1):
     if step % log_every == 0:
         print(
             f"step: {step:8d} | loss: {loss_accum.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm ae: {norm_ae.item():8.4f} | norm dit: {norm_dit.item():8.4f}")
-    if step % save_every == 0:
+    if (step % save_every == 0 and step > 0) or step == num_steps:
         if not os.path.exists(f"../saved_models/dit/{run.name}"):
             os.makedirs(f"../saved_models/dit/{run.name}")
 

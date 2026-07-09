@@ -443,7 +443,7 @@ def main():
     to_tensor = ToTensor()
     to_image = ToPILImage()
 
-    src = Image.open("src/test_img2.png").convert("RGB").resize((img_size, img_size))
+    src = Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))
     input_img = to_tensor(src).unsqueeze(0).to(device)
 
     ds = load_dataset("arrow", data_files={"data/filtered_ds/*.arrow"}, split="train")
