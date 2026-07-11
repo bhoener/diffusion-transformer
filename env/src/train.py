@@ -94,6 +94,7 @@ from PIL import Image
 from src.model import DiT
 from src.autoencoder import Autoencoder
 from src.discriminator import Discriminator
+from src.ema import EMA
 
 import lpips
 
@@ -166,12 +167,12 @@ reg_loss_weight = 0.5
 repa_weight_vae = 1.5
 repa_weight_dit = 0.5
 
-mse_loss_weight = 0.1
+mse_loss_weight = 1.0
 lpips_loss_weight = 1.0
 kl_loss_weight = 1e-4
 
 log_every = 10
-save_every = 500
+save_every = 1000
 
 dit = DiT(
     encoder_model=encoder,
@@ -189,6 +190,8 @@ dit = DiT(
 
 dit = dit.to(device)
 dit = torch.compile(dit)
+
+ema = EMA(dit)
 
 dino_processor = load_hf_asset(
     AutoImageProcessor,
@@ -402,20 +405,23 @@ for step in range(num_steps + 1):
         for optim in model_optims:
             optim.step()
 
+    ema.update()
+
     if step % log_every == 0:
         print(
             f"step: {step:8d} | loss: {loss_accum.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm ae: {norm_ae.item():8.4f} | norm dit: {norm_dit.item():8.4f}")
     if (step % save_every == 0 and step > 0) or step == num_steps:
-        if not os.path.exists(f"../saved_models/dit/{run.name}"):
-            os.makedirs(f"../saved_models/dit/{run.name}")
+        root = f"../saved_models/dit/{run.name}"
+        if not os.path.exists(root):
+            os.makedirs(root)
 
-        torch.save(dit.state_dict(), f"../saved_models/dit/{run.name}/dit.pth")
-        torch.save(ae.state_dict(), f"../saved_models/dit/{run.name}/ae.pth")
-        torch.save(pre_bn.state_dict(), f"../saved_models/dit/{run.name}/bn.pth")
+        torch.save(dit.state_dict(), os.path.join(root, "dit.pth"))
+        torch.save(ae.state_dict(), os.path.join(root, "ae.pth"))
+        torch.save(pre_bn.state_dict(), os.path.join(root, "bn.pth"))
         for model_type, optims in optimizers.items():
             for optim in optims:
-                torch.save(optim.state_dict(), f"../saved_models/dit/{run.name}/opt_{model_type}_{optim.__class__.__name__}.pth")
-
+                torch.save(optim.state_dict(), os.path.join(root, f"opt_{model_type}_{optim.__class__.__name__}.pth"))
+        ema.checkpoint(root, step)
 
     wandb.log({"step": step,
                "loss/total": loss_accum.item(),

@@ -65,3 +65,8 @@ and it is causing kl to spike
 
 
 HOLY I AM STUPID I WASNT PASSING THE NOISED LATENTS INTO THE DIT
+
+
+to try:
+
+ - make vae do more compression

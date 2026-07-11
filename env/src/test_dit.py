@@ -8,7 +8,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 1000
-MODEL_PATH = "../saved_models/dit/stoic-dream-57/"
+MODEL_PATH = "../saved_models/dit/bright-frog-62/"
 
 from tqdm import tqdm
 import math
@@ -196,5 +196,5 @@ with torch.no_grad():
 
         decoded = ae.decode(latent)
 
-        plt.imshow(decoded.squeeze(0).permute(1, 2, 0).detach().cpu().numpy())
+        plt.imshow(decoded.view(3, img_size, img_size).permute(1, 2, 0).detach().cpu().numpy())
         plt.show()

@@ -343,7 +343,7 @@ class Autoencoder(nn.Module):
             latent_channels[0], n_channels, 3, stride=1, padding=1
         )
 
-    def encode(self, x: torch.Tensor) -> tuple[torch.Tensor]:
+    def encode(self, x: torch.Tensor) -> tuple[torch.Tensor, ...]:
         x = self.preprocess_conv(x)
 
         mu, logvar = self.encoder(x)
@@ -373,7 +373,7 @@ def main():
     img_size = 256
     batch_size = 8
     steps = 30000
-    latent_channels = (128, 256, 512, 512)
+    latent_channels = (128, 256, 512, 512, 512)
     z_channels = 32
     kernel_size = 3
     padding = 1
