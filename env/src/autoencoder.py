@@ -179,7 +179,7 @@ class Encoder(nn.Module):
     def __init__(
         self,
         resnet_blocks_per_layer: int,
-        channels: tuple[int],  # (128, 256, 512, 512), (128, 128, 256, 512, 512)
+        channels: tuple[int, ...],  # (128, 256, 512, 512), (128, 128, 256, 512, 512)
         z_channels: int = 32,
         kernel_size: int = 3,
         padding: int = 1,
@@ -237,7 +237,7 @@ class Decoder(nn.Module):
     def __init__(
         self,
         resnet_blocks_per_layer: int,
-        channels: tuple[int],
+        channels: tuple[int, ...],
         z_channels: int = 32,
         kernel_size: int = 3,
         padding: int = 1,
@@ -290,7 +290,7 @@ class Decoder(nn.Module):
 class Autoencoder(nn.Module):
     def __init__(
         self,
-        latent_channels: tuple[int],
+        latent_channels: tuple[int, ...],
         z_channels: int = 32,
         kernel_size: int = 3,
         padding: int = 1,
@@ -361,7 +361,7 @@ class Autoencoder(nn.Module):
 
         return F.sigmoid(x)
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, ...]:
         latent, mu, logvar = self.encode(x)
 
         out = self.decode(latent)
@@ -373,7 +373,7 @@ def main():
     img_size = 256
     batch_size = 8
     steps = 30000
-    latent_channels = (128, 256, 512, 512, 512)
+    latent_channels = (128, 256, 512, 512)
     z_channels = 32
     kernel_size = 3
     padding = 1

@@ -53,7 +53,7 @@ GAN Loss: https://arxiv.org/pdf/1512.09300
 need to do:
 
 - cfg
-- ema
+- ema (done)
 
 but first: kl divergence loss is broken
 i think at first the alignment loss was never getting backpropped
@@ -69,4 +69,4 @@ HOLY I AM STUPID I WASNT PASSING THE NOISED LATENTS INTO THE DIT
 
 to try:
 
- - make vae do more compression
+ - make vae do more compression (done)

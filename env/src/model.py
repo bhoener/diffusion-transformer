@@ -290,7 +290,7 @@ class MultiStreamDiTBlock(nn.Module):
 
     def forward(
         self, img_x: torch.Tensor, text_x: torch.Tensor, condition: torch.Tensor
-    ) -> tuple[torch.Tensor]:
+    ) -> tuple[torch.Tensor, ...]:
         img_x = (
             img_x
             + self.cross_attention(
@@ -445,12 +445,12 @@ class DiT(nn.Module):
         self.depatchify = Depatchify(
             d_model=d_model, patch_size=patch_size, w=w, h=h, n_channels=n_channels
         )
-        nn.init.xavier_normal_(self.depatchify.proj.weight)
+        nn.init.xavier_normal_(self.depatchify.proj.weight) # tried zero-init, did worse
 
     def forward(
         self, latent: torch.Tensor, tokens: torch.Tensor, clip_tokens: torch.Tensor, timesteps: torch.Tensor, repa_layer: int = -1,
-    ) -> torch.Tensor | tuple[torch.Tensor]:
-        latent_x = self.patchify(norm(latent))
+    ) -> torch.Tensor | tuple[torch.Tensor, ...]:
+        latent_x = self.patchify(latent)
         B, N, C = latent_x.size()
 
         with torch.no_grad():

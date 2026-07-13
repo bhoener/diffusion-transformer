@@ -3,7 +3,7 @@ import torch
 from src.model import DiT
 
 class EMA:
-    def __init__(self, dit: DiT, gammas: tuple[float]=(16.97, 6.94)):
+    def __init__(self, dit: DiT, gammas: tuple[float, ...]=(16.97, 6.94)):
         self.dit = dit
         self.gammas = gammas
         
@@ -24,7 +24,10 @@ class EMA:
         self.dit_state_dicts = [self.dit.state_dict() for _ in range(len(self.gammas))]
         
     def checkpoint(self, root: str, global_step: int, reset: bool = False) -> None:
-        for gamma, state_dict in zip(self.gammas, self.dit_state_dicts):
-            torch.save(state_dict, os.path.join(root, f"dit_ema_gamma_{gamma:05.2f}_step_{global_step:08d}.pth"))
         if reset:
+            for gamma, state_dict in zip(self.gammas, self.dit_state_dicts):
+                torch.save(state_dict, os.path.join(root, f"dit_ema_gamma_{gamma:05.2f}_step_{global_step:08d}.pth"))
             self.__reset()
+        else:
+            for gamma, state_dict in zip(self.gammas, self.dit_state_dicts):
+                torch.save(state_dict, os.path.join(root, f"dit_ema_gamma_{gamma:05.2f}.pth"))

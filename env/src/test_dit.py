@@ -8,7 +8,8 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 1000
-MODEL_PATH = "../saved_models/dit/bright-frog-62/"
+MODEL_PATH = "../saved_models/dit/deft-voice-69/"
+TIMESHIFT_ALPHA = 4.63
 
 from tqdm import tqdm
 import math
@@ -106,7 +107,7 @@ n_channels = 3
 
 
 # VAE
-latent_channels = (128, 256, 512, 512)
+latent_channels = (128, 256, 512, 512, 512)
 z_channels = 32
 kernel_size = 3
 padding = 1
@@ -160,7 +161,7 @@ dit = DiT(
 )
 
 dit = dit.to(device)
-dit.load_state_dict({k.replace("_orig_mod.", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit.pth")).items()})
+dit.load_state_dict({k.replace("_orig_mod.", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit_ema_gamma_16.97.pth")).items()})
 
 
 dino_processor = load_hf_asset(
@@ -190,8 +191,9 @@ with torch.no_grad():
 
 
         for timestep in tqdm(range(GENERATION_STEPS)):
+            t = (TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
             latent = pre_bn(latent)
-            dit_out = dit(latent, tokens, clip_tokens, torch.tensor([math.floor(timestep / GENERATION_STEPS) * (dit.n_timesteps - 1)]).view(-1, 1, 1, 1).to(device))
+            dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
             latent = latent + dit_out / GENERATION_STEPS
 
         decoded = ae.decode(latent)
