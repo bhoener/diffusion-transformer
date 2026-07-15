@@ -165,6 +165,7 @@ repa_layer = 2
 batch_size = 4
 grad_accum_steps = 4
 num_steps = 12500
+cooldown_frac = 0.1
 lr_ae = 3e-4
 lr_dit_muon = 1e-2
 lr_dit_adamw = 3e-4
@@ -299,6 +300,13 @@ run = wandb.init(
         "img_size": img_size,
     },
 )
+
+def get_lr(it: int, lr_base: float) -> float:
+    if 1 - (it / num_steps) < cooldown_frac:
+        cooldown_prog = 1 - (num_steps - it) / (num_steps * cooldown_frac)
+        return (1 - cooldown_prog) * lr_base
+    else:
+        return lr_base
 
 for step in range(num_steps + 1):
     # -------------------------------- training step -------------------------------
@@ -439,6 +447,8 @@ for step in range(num_steps + 1):
 
     for model_optims in optimizers.values():
         for optim in model_optims:
+            for param_group in optim.param_groups:
+                param_group["lr"] = get_lr(step, optim.defaults["lr"])
             optim.step()
 
     ema.update()
@@ -479,6 +489,7 @@ for step in range(num_steps + 1):
             "loss/reg/lpips": loss_lpips.item(),
             "norm_ae": norm_ae.item(),
             "norm_dit": norm_dit.item(),
+            "lr_mult": get_lr(step, 1.0),
         }
     )
 

@@ -70,3 +70,4 @@ HOLY I AM STUPID I WASNT PASSING THE NOISED LATENTS INTO THE DIT
 to try:
 
  - make vae do more compression (done)
+ - non-uniform timestep sampling for training

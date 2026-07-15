@@ -7,8 +7,8 @@ sys.path.append("src/")
 os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
-GENERATION_STEPS = 1000
-MODEL_PATH = "../saved_models/dit/deft-voice-69/"
+GENERATION_STEPS = 30
+MODEL_PATH = "../saved_models/dit/logical-darkness-76/"
 TIMESHIFT_ALPHA = 4.63
 
 from tqdm import tqdm
