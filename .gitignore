@@ -7,5 +7,6 @@ src/__pycache__/
 *.pt
 *.pth
 src/gradients/
+saved_models/
 wandb/
 data/
