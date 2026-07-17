@@ -141,11 +141,11 @@ class AttentionBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, c, W, H = x.size()
 
-        x = self.norm(x)
+        input = self.norm(x)
 
-        Q = self.wq(x)
-        K = self.wk(x)
-        V = self.wv(x)
+        Q = self.wq(input)
+        K = self.wk(input)
+        V = self.wv(input)
 
         Q = rearrange(Q, "B c W H -> B 1 (W H) c").contiguous()
         K = rearrange(K, "B c W H -> B 1 (W H) c").contiguous()

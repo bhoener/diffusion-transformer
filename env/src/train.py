@@ -198,7 +198,7 @@ dit = DiT(
 )
 
 dit = dit.to(device)
-dit = torch.compile(dit)
+#dit = torch.compile(dit)
 
 ema = EMA(dit)
 
@@ -327,20 +327,29 @@ for step in range(num_steps + 1):
             images = batch["pixel_values"].to(device)
             last_images = images
             captions = batch["caption"]
-            dino_inputs = dino_processor(images, return_tensors="pt").to(device)
-            clip_tokens = clip_tokenizer(
+            dino_inputs = dino_processor(images, return_tensors="pt", do_rescale=False).to(device)
+            clip_out = clip_tokenizer(
                 captions,
                 padding=True,
                 truncation=True,
                 return_tensors="pt",
-            ).input_ids.to(device)
-            t5_tokens = t5_tokenizer(
-                captions,
-                padding=True,
-                truncation=True,
-                return_tensors="pt",
-            ).input_ids.to(device)
+            )
+            clip_tokens = clip_out.input_ids.to(device)
 
+            t5_out = t5_tokenizer(
+                captions,
+                padding=True,
+                truncation=True,
+                return_tensors="pt",
+            )
+            t5_tokens = t5_out.input_ids.to(device)
+            t5_attn_mask = t5_out.attention_mask.bool().to(device)
+            # attn_mask returned is of form
+            # [
+            # [1, 1, 1, 1, 0, 0],
+            # [1, 1, 0, 0, 0, 0],
+            # ...
+            # ]
         except StopIteration:
             iterator = iter(dl)
             continue
@@ -379,6 +388,7 @@ for step in range(num_steps + 1):
             dit_out, repa_out = dit(
                 interpolated,
                 tokens=t5_tokens,
+                attn_mask=t5_attn_mask,
                 clip_tokens=clip_tokens,
                 timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1))
                 .long()

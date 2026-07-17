@@ -181,6 +181,7 @@ print("dino model setup")
 
 pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
 pre_bn.load_state_dict(torch.load(os.path.join(MODEL_PATH, "bn.pth")))
+pre_bn.eval()
 
 with torch.no_grad():
     while (prompt := input("Enter a prompt: ")).lower() not in {"q", "quit"}:
@@ -188,11 +189,11 @@ with torch.no_grad():
         clip_tokens = clip_tokenizer.encode(prompt, return_tensors="pt").to(device)
 
         latent = torch.randn(1, z_channels, latent_size, latent_size).to(device) # ae.encode(to_tensor(Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))).unsqueeze(0).to(device))[0]
+        latent = pre_bn(latent)
 
-
-        for timestep in tqdm(range(GENERATION_STEPS)):
+        for timestep in tqdm(range(GENERATION_STEPS + 1)):
             t = (TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
-            latent = pre_bn(latent)
+            
             dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
             latent = latent + dit_out / GENERATION_STEPS
 
