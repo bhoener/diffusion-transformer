@@ -10,3 +10,4 @@ src/gradients/
 saved_models/
 wandb/
 data/
+env/
