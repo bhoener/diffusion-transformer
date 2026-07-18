@@ -37,13 +37,7 @@ torch._functorch.config.donated_buffer = False
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-HF_LOCAL_FILES_ONLY = os.getenv("HF_LOCAL_FILES_ONLY", "1").lower() not in {
-    "0",
-    "false",
-    "no",
-    "off",
-}
-
+HF_LOCAL_FILES_ONLY = False
 
 def log(message: str) -> None:
     print(message, flush=True)
@@ -160,8 +154,8 @@ repa_layer = 2
 
 # training config
 
-batch_size = 4
-grad_accum_steps = 4
+batch_size = 16
+grad_accum_steps = 2
 num_steps = 12500
 cooldown_frac = 0.1
 lr_ae = 3e-4
@@ -232,8 +226,7 @@ optimizers = {
     "proj_conv": [torch.optim.AdamW(proj_conv.parameters(), lr=lr_ae)],
 }
 
-data_files = str(PROJECT_DIR / "data" / "filtered_ds" / "*.arrow")
-ds = load_dataset("arrow", data_files=data_files, split="train")
+ds = load_dataset("arrow", data_files="data/filtered_ds/*.arrow", split="train")
 
 transform = transforms.Compose(
     [
@@ -253,7 +246,9 @@ def transform_batch(examples):
     return out
 
 
-ds = ds.with_transform(transform_batch)
+ds = ds.map(transform_batch, batched=True, remove_columns=[col for col in ds.column_names if col not in {"pixel_values", "caption"}])
+ds = ds.with_format("torch", device=device)
+
 
 dl = torch.utils.data.DataLoader(
     ds, batch_size=batch_size, pin_memory=False, drop_last=True
@@ -317,15 +312,16 @@ for step in range(num_steps + 1):
 
     for micro_step in range(grad_accum_steps):
         # sample timesteps - TODO: maybe not from uniform dist
-        ts = torch.rand(batch_size, 1, 1, 1).to(device)
+        ts = torch.rand(batch_size, 1, 1, 1, device=device)
 
         try:
             # load data
             batch = next(iterator)
-            images = batch["pixel_values"].to(device)
+            images = batch["pixel_values"]
             last_images = images
             captions = batch["caption"]
-            dino_inputs = dino_processor(images, return_tensors="pt", do_rescale=False).to(device)
+            dino_inputs = dino_processor(images, return_tensors="pt", do_rescale=False, device=device)
+            # TODO - pre-tokenize
             clip_out = clip_tokenizer(
                 captions,
                 padding=True,

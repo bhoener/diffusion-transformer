@@ -252,12 +252,15 @@ class RoPE(nn.Module):
         self.cache_positions = cache_positions
         self.base = base
 
-        self.thetas = torch.empty(d_model // 2)
+        thetas = torch.empty(d_model // 2)
 
         for i in range(d_model // 2):
-            self.thetas[i] = self.base ** (-2 * (i - 1) / d_model)
+            thetas[i] = self.base ** (-2 * (i - 1) / d_model)
 
-        self.thetas = torch.repeat_interleave(self.thetas, 2, dim=0)
+        # register buffer?
+        thetas = torch.repeat_interleave(thetas, 2, dim=0)
+        
+        self.register_buffer("thetas", thetas)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.size()
@@ -268,7 +271,7 @@ class RoPE(nn.Module):
 
         ms = torch.arange(T, device=x.device)
 
-        angles = torch.einsum("t, d -> td", ms, self.thetas.to(x.device)).unsqueeze(0)
+        angles = torch.einsum("t, d -> td", ms, self.thetas).unsqueeze(0)
         sines = torch.sin(angles)
         cosines = torch.cos(angles)
 
@@ -504,14 +507,14 @@ class DiT(nn.Module):
 
         for layer in self.multi_stream_layers:
             latent_x, text_x = layer(
-                latent_x, text_x, multi_stream_condition, attn_mask=(attn_mask.view(B, 1, 1, -1) if attn_mask else None)
+                latent_x, text_x, multi_stream_condition, attn_mask=(attn_mask.view(B, 1, 1, -1) if attn_mask is not None else None)
             )
 
         x = torch.cat((latent_x, text_x), dim=1)
 
         repa_out = None
 
-        single_stream_attn_mask = torch.cat((torch.ones(B, N).to(latent.device), attn_mask), dim=-1).view(B, 1, 1, -1) if attn_mask else None
+        single_stream_attn_mask = torch.cat((torch.ones(B, N, device=latent.device), attn_mask), dim=-1).view(B, 1, 1, -1) if attn_mask is not None else None
         for i, layer in enumerate(self.single_stream_layers):
             x = layer(x, single_stream_condition, attn_mask=single_stream_attn_mask)
             if i == repa_layer:

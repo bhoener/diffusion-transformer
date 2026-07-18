@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/mild-dream-82/"
+MODEL_PATH = "../saved_models/dit/solar-armadillo-86/"
 TIMESHIFT_ALPHA = 4.63
 
 from tqdm import tqdm
