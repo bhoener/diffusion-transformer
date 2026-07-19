@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import contextlib
 from pathlib import Path
 
 import datasets
@@ -10,6 +11,12 @@ import torch
 import torch._functorch.config
 import torch.nn as nn
 import torch.nn.functional as F
+# ddp
+import torch.multiprocessing as mp
+import torch.distributed as dist
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+
 import wandb
 from datasets import load_dataset
 from PIL import Image
@@ -27,10 +34,30 @@ from transformers import (
     T5EncoderModel,
 )
 
+
+
+def ddp_setup() -> None:
+    ddp_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(ddp_rank)
+    
+    dist.init_process_group(backend="nccl")
+
+def ddp_cleanup() -> None:
+    dist.destroy_process_group()
+
+ddp = "LOCAL_RANK" in os.environ
+
+if ddp:
+    ddp_setup()
+
+    
+    ddp_rank = int(os.environ["LOCAL_RANK"])
+    if ddp_rank == 0:
+        print(f"ddp set up | world size: {dist.get_world_size()}")
+
 os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{ddp_rank if ddp else 0}" if torch.cuda.is_available() else "cpu")
 torch.set_float32_matmul_precision("high")
 # maybe remove, makes torch.compile happy
 torch._functorch.config.donated_buffer = False
@@ -39,8 +66,10 @@ torch._functorch.config.donated_buffer = False
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 HF_LOCAL_FILES_ONLY = False
 
-def log(message: str) -> None:
-    print(message, flush=True)
+def log(*args) -> None:
+    if ddp and ddp_rank != 0:
+        return
+    print(*args, flush=True)
 
 
 def load_hf_model(model_cls, model_id: str, name: str, **kwargs):
@@ -109,7 +138,7 @@ if torch.cuda.is_available():
 lpips_loss = lpips.LPIPS(net="vgg")
 lpips_loss = lpips_loss.to(device)
 
-print("lpips loss setup")
+log("lpips loss setup")
 
 img_size = 256
 n_channels = 3
@@ -138,10 +167,13 @@ ae = Autoencoder(
 )
 
 ae = ae.to(device)
+if ddp:
+    ae = DDP(ae, device_ids=[ddp_rank])
+ae = torch.compile(ae)
 
-latent_size = img_size // 2 ** (len(ae.encoder.channels) - 1)
+latent_size = img_size // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1)
 
-print("autoencoder created")
+log("autoencoder created")
 
 # DiT
 d_model = 512
@@ -154,8 +186,8 @@ repa_layer = 2
 
 # training config
 
-batch_size = 16
-grad_accum_steps = 2
+batch_size = 4
+grad_accum_steps = 1
 num_steps = 12500
 cooldown_frac = 0.1
 lr_ae = 3e-4
@@ -183,13 +215,15 @@ dit = DiT(
     n_layers_multi_stream=n_layers_multi_stream,
     n_layers_single_stream=n_layers_single_stream,
     patch_size=patch_size,
-    w=img_size // 2 ** (len(ae.encoder.channels) - 1),
-    h=img_size // 2 ** (len(ae.encoder.channels) - 1),
+    w=img_size // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
+    h=img_size // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
     n_timesteps=n_timesteps,
     n_channels=z_channels,
 )
 
 dit = dit.to(device)
+if ddp:
+    dit = DDP(dit, device_ids=[ddp_rank])
 dit = torch.compile(dit)
 
 ema = EMA(dit)
@@ -205,13 +239,14 @@ dino_model = load_hf_model(
     "dino model",
 )
 
-print("dino model setup")
+log("dino model setup")
 
 proj_conv = nn.Conv2d(
     d_model, dino_model.config.hidden_size, kernel_size=3, stride=1, padding=1
 ).to(device)
-
 nn.init.zeros_(proj_conv.weight.data)
+if ddp:
+    proj_conv = DDP(proj_conv, device_ids=[ddp_rank])
 
 pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
 
@@ -238,61 +273,70 @@ transform = transforms.Compose(
 
 
 def transform_batch(examples):
-    out = {"pixel_values": [], "caption": []}
+    out = {"pixel_values": [], "t5_tokens": [], "t5_attn_mask": [], "clip_tokens": []}
     for img, json in zip(examples["jpg"], examples["json"]):
         if img is not None and json is not None:
             out["pixel_values"].append(transform(img))
-            out["caption"].append(json["caption"])
+            t5_out = t5_tokenizer(json["caption"], padding=True,
+                truncation=True,
+                return_tensors="pt")
+            
+            out["t5_tokens"].append(t5_out.input_ids)
+            out["t5_attn_mask"].append(t5_out.attention_mask.bool())
+            out["clip_tokens"].append(clip_tokenizer(json["caption"], padding=True,
+                truncation=True,
+                return_tensors="pt").input_ids)
     return out
 
 
-ds = ds.map(transform_batch, batched=True, remove_columns=[col for col in ds.column_names if col not in {"pixel_values", "caption"}])
+ds = ds.map(transform_batch, batched=True, remove_columns=[col for col in ds.column_names if col not in {"pixel_values", "t5_tokens", "t5_attn_mask", "clip_tokens"}])
 ds = ds.with_format("torch", device=device)
 
 
 dl = torch.utils.data.DataLoader(
-    ds, batch_size=batch_size, pin_memory=False, drop_last=True
+    ds, batch_size=batch_size, pin_memory=False, drop_last=True, sampler=DistributedSampler(ds)
 )
 
 iterator = iter(dl)
 last_images = None
 
-print("dataset created")
+log("dataset created")
 
-run = wandb.init(
-    project="FlowMatching",
-    config={
-        "autoencoder": {
-            "latent_channels": latent_channels,
-            "z_channels": z_channels,
-            "kernel_size": kernel_size,
-            "resnet_blocks_per_layer": resnet_blocks_per_layer,
-            "resnet_kernel_size": resnet_kernel_size,
-            "resnet_stride": resnet_stride,
-            "resnet_padding": resnet_padding,
-            "n_channels": n_channels,
+if ddp_rank == 0 or not ddp:
+    run = wandb.init(
+        project="FlowMatching",
+        config={
+            "autoencoder": {
+                "latent_channels": latent_channels,
+                "z_channels": z_channels,
+                "kernel_size": kernel_size,
+                "resnet_blocks_per_layer": resnet_blocks_per_layer,
+                "resnet_kernel_size": resnet_kernel_size,
+                "resnet_stride": resnet_stride,
+                "resnet_padding": resnet_padding,
+                "n_channels": n_channels,
+            },
+            "dit": {
+                "d_model": d_model,
+                "n_heads": n_heads,
+                "n_layers_multi_stream": n_layers_multi_stream,
+                "n_layers_single_stream": n_layers_single_stream,
+                "patch_size": patch_size,
+                "n_timesteps": n_timesteps,
+            },
+            "steps": num_steps,
+            "batch_size": batch_size,
+            "lr_ae": lr_ae,
+            "lr_dit_muon": lr_dit_muon,
+            "lr_dit_adamw": lr_dit_adamw,
+            "repa_loss_weight": repa_loss_weight,
+            "reg_loss_weight": reg_loss_weight,
+            "mse_loss_weight": mse_loss_weight,
+            "lpips_loss_weight": lpips_loss_weight,
+            "kl_loss_weight": kl_loss_weight,
+            "img_size": img_size,
         },
-        "dit": {
-            "d_model": d_model,
-            "n_heads": n_heads,
-            "n_layers_multi_stream": n_layers_multi_stream,
-            "n_layers_single_stream": n_layers_single_stream,
-            "patch_size": patch_size,
-            "n_timesteps": n_timesteps,
-        },
-        "steps": num_steps,
-        "batch_size": batch_size,
-        "lr_ae": lr_ae,
-        "lr_dit_muon": lr_dit_muon,
-        "lr_dit_adamw": lr_dit_adamw,
-        "repa_loss_weight": repa_loss_weight,
-        "reg_loss_weight": reg_loss_weight,
-        "mse_loss_weight": mse_loss_weight,
-        "lpips_loss_weight": lpips_loss_weight,
-        "kl_loss_weight": kl_loss_weight,
-        "img_size": img_size,
-    },
-)
+    )
 
 def get_lr(it: int, lr_base: float) -> float:
     if 1 - (it / num_steps) < cooldown_frac:
@@ -300,6 +344,8 @@ def get_lr(it: int, lr_base: float) -> float:
         return (1 - cooldown_prog) * lr_base
     else:
         return lr_base
+    
+ctx = torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16) if torch.cuda.is_bf16_supported() else contextlib.nullcontext()
 
 for step in range(num_steps + 1):
     # -------------------------------- training step -------------------------------
@@ -316,41 +362,31 @@ for step in range(num_steps + 1):
 
         try:
             # load data
+            t0 = time.time()
             batch = next(iterator)
             images = batch["pixel_values"]
             last_images = images
             captions = batch["caption"]
             dino_inputs = dino_processor(images, return_tensors="pt", do_rescale=False, device=device)
             # TODO - pre-tokenize
-            clip_out = clip_tokenizer(
-                captions,
-                padding=True,
-                truncation=True,
-                return_tensors="pt",
-            )
-            clip_tokens = clip_out.input_ids.to(device)
-
-            t5_out = t5_tokenizer(
-                captions,
-                padding=True,
-                truncation=True,
-                return_tensors="pt",
-            )
-            t5_tokens = t5_out.input_ids.to(device)
-            t5_attn_mask = t5_out.attention_mask.bool().to(device)
+            clip_tokens = batch["clip_tokens"]
+            t5_tokens = batch["t5_tokens"]
+            t5_attn_mask = batch["t5_attn_mask"]
             # attn_mask returned is of form
             # [
             # [1, 1, 1, 1, 0, 0],
             # [1, 1, 0, 0, 0, 0],
             # ...
             # ]
+            log("load data: ", time.time() - t0)
         except StopIteration:
             iterator = iter(dl)
             continue
 
+        t0 = time.time()
         # get dino latent
         with torch.no_grad():
-            with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+            with ctx:
                 outputs = dino_model(**dino_inputs)
             hidden_states = outputs.last_hidden_state
 
@@ -361,11 +397,15 @@ for step in range(num_steps + 1):
         B, N, D = patch_tokens.size()
         H = W = int(N**0.5)
         patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
+        log("dino runtime:", time.time() - t0)
 
+
+        t0 = time.time()
         # get clean latent, mean and var, do batchnorm for repa-e
-        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
-            latent, mu, logvar = ae.encode(images)
+        with ctx:
+            latent, mu, logvar, recon = ae(images)
             latent_bn = pre_bn(latent)
+        log("vae runtime:", time.time() - t0)
 
         # detach normed latent to go throuh dit (so diffusion loss doesn't leak into encoder)
         latent_det = latent_bn.detach()
@@ -378,17 +418,19 @@ for step in range(num_steps + 1):
         interpolated = ts * latent_det + (1 - ts) * epsilon
 
         # get dit prediction for latent, also take a hidden state for alignment loss
-        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+        t0 = time.time()
+        with ctx:
             dit_out, repa_out = dit(
                 interpolated,
                 tokens=t5_tokens,
                 attn_mask=t5_attn_mask,
                 clip_tokens=clip_tokens,
-                timesteps=torch.floor(ts.view(-1) * (dit.n_timesteps - 1))
+                timesteps=torch.floor(ts.view(-1) * (dit.module.n_timesteps if ddp else dit.n_timesteps - 1))
                 .long()
                 .to(device),
                 repa_layer=repa_layer,
             )
+        log("dit runtime:", time.time() - t0)
 
         # reshape to B, C, H, W for iREPA conv projection
         H_dit = W_dit = latent_size // patch_size
@@ -396,9 +438,10 @@ for step in range(num_steps + 1):
         # pool so that H, W match that of dino - TODO: maybe try pooling after projection conv?
         repa_out = F.adaptive_avg_pool2d(repa_out, (H, W))
 
-        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
+        with ctx:
             projected = proj_conv(repa_out)
 
+        t0 = time.time()
         # repa alignment loss
         loss_alignment = (
             1 - F.cosine_similarity(projected, patch_tokens, dim=1).mean()
@@ -415,10 +458,6 @@ for step in range(num_steps + 1):
         grad_latent = torch.autograd.grad(
             loss_alignment_vae, latent_det, retain_graph=True
         )[0]
-
-        # reconstruct the output for vae training, reg losses
-        with torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16):
-            recon = ae.decode(latent)
 
         # reg losses
         loss_mse = ((images - recon) ** 2).mean()
@@ -441,8 +480,12 @@ for step in range(num_steps + 1):
         )
 
         loss = loss / grad_accum_steps
+        
+        log("loss calculation time:", time.time() - t0)
 
+        t0 = time.time()
         loss.backward()
+        log("backward time:", time.time() - t0)
 
         loss_accum += loss.detach()
 
@@ -457,18 +500,18 @@ for step in range(num_steps + 1):
 
     ema.update()
 
-    if step % log_every == 0:
-        print(
+    if step % log_every == 0 and ddp_rank == 0:
+        log(
             f"step: {step:8d} | loss: {loss_accum.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm ae: {norm_ae.item():8.4f} | norm dit: {norm_dit.item():8.4f}"
         )
 
-    if (step % save_every == 0 and step > 0) or step == num_steps:
+    if ((step % save_every == 0 and step > 0) or step == num_steps) and (ddp_rank == 0 or not ddp):
         root = f"../saved_models/dit/{run.name}"
         if not os.path.exists(root):
             os.makedirs(root)
 
-        torch.save(dit.state_dict(), os.path.join(root, "dit.pth"))
-        torch.save(ae.state_dict(), os.path.join(root, "ae.pth"))
+        torch.save(dit.module.state_dict() if ddp else dit.state_dict(), os.path.join(root, "dit.pth"))
+        torch.save(ae.module.state_dict() if ddp else ae.state_dict(), os.path.join(root, "ae.pth"))
         torch.save(pre_bn.state_dict(), os.path.join(root, "bn.pth"))
         for model_type, optims in optimizers.items():
             for optim in optims:
@@ -481,21 +524,24 @@ for step in range(num_steps + 1):
         ema.checkpoint(root, step)
 
     # log everything to wandb. everything other than total loss isn't accumulated because i don't want to do it
-    wandb.log(
-        {
-            "step": step,
-            "loss/total": loss_accum.item(),
-            "loss/alignment": loss_alignment.item(),
-            "loss/diffusion": loss_diffusion.item(),
-            "loss/reg/total": loss_reg.item(),
-            "loss/reg/mse": loss_mse.item(),
-            "loss/reg/kl": loss_kl.item(),
-            "loss/reg/lpips": loss_lpips.item(),
-            "norm_ae": norm_ae.item(),
-            "norm_dit": norm_dit.item(),
-            "lr_mult": get_lr(step, 1.0),
-        }
-    )
+    if ddp_rank == 0 or not ddp:
+        wandb.log(
+            {
+                "step": step,
+                "loss/total": loss_accum.item(),
+                "loss/alignment": loss_alignment.item(),
+                "loss/diffusion": loss_diffusion.item(),
+                "loss/reg/total": loss_reg.item(),
+                "loss/reg/mse": loss_mse.item(),
+                "loss/reg/kl": loss_kl.item(),
+                "loss/reg/lpips": loss_lpips.item(),
+                "norm_ae": norm_ae.item(),
+                "norm_dit": norm_dit.item(),
+                "lr_mult": get_lr(step, 1.0),
+            }
+        )
+
+ddp_cleanup()
 
 if last_images is not None:
     plt.imshow(
@@ -507,3 +553,4 @@ if last_images is not None:
         .numpy()
     )
     plt.show()
+

@@ -19,5 +19,5 @@ clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-large-patch14")
 print("hello2")
 ds = load_dataset("stanford-vision-lab/gpic", split="val", data_files={"val": "hf://datasets/stanford-vision-lab/gpic/val/*.tar"})
 
-ds = ds.filter(lambda ex: ex["jpg"] is not None)
+ds = ds.filter(lambda ex: ex["jpg"] is not None and ex["json"]["caption"] is not None)
 ds.save_to_disk("data/filtered_ds")
