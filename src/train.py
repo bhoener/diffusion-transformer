@@ -11,6 +11,7 @@ import torch
 import torch._functorch.config
 import torch.nn as nn
 import torch.nn.functional as F
+import torch._inductor.config as inductor_config
 # ddp
 import torch.multiprocessing as mp
 import torch.distributed as dist
@@ -35,6 +36,10 @@ from transformers import (
 )
 
 def main() -> None:
+    # for h100
+    torch.backends.cuda.enable_mem_efficient_sdp(False)
+    torch.backends.cuda.enable_flash_sdp(True) 
+    
     def ddp_setup() -> None:
         ddp_rank = int(os.environ["LOCAL_RANK"])
         torch.cuda.set_device(ddp_rank)
@@ -196,7 +201,7 @@ def main() -> None:
 
     # training config
 
-    batch_size = 4
+    batch_size = 16
     grad_accum_steps = 1
     num_steps = 50000
     cooldown_frac = 0.1
@@ -266,11 +271,11 @@ def main() -> None:
         "dit": [
             torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon),
             torch.optim.AdamW(
-                [p for p in dit.parameters() if p.ndim != 2], lr=lr_dit_adamw
+                [p for p in dit.parameters() if p.ndim != 2], lr=lr_dit_adamw, fused=True
             ),
         ],
-        "vae": [torch.optim.AdamW([p for p in ae.parameters()], lr=lr_ae)],
-        "proj_conv": [torch.optim.AdamW(proj_conv.parameters(), lr=lr_ae)],
+        "vae": [torch.optim.AdamW(ae.parameters(), lr=lr_ae, fused=True)],
+        "proj_conv": [torch.optim.AdamW(proj_conv.parameters(), lr=lr_ae, fused=True)]
     }
 
     ds = load_dataset("arrow", data_files="data/filtered_ds/*.arrow", split="train")
@@ -308,7 +313,7 @@ def main() -> None:
 
 
     dl = torch.utils.data.DataLoader(
-        ds, batch_size=batch_size, pin_memory=False, drop_last=True, sampler=DistributedSampler(ds) if ddp else None, persistent_workers=True, num_workers=2, prefetch_factor=2, in_order=False 
+        ds, batch_size=batch_size, pin_memory=False, drop_last=True, sampler=DistributedSampler(ds) if ddp else None, persistent_workers=True, num_workers=8, prefetch_factor=8, in_order=False 
     )
 
     iterator = iter(dl)
@@ -372,7 +377,7 @@ def main() -> None:
 
         for micro_step in range(grad_accum_steps):
             # sample timesteps - TODO: maybe not from uniform dist
-            ts = torch.rand(batch_size, 1, 1, 1, device=device)
+            ts = torch.rand(batch_size, device=device)
 
             try:
                 # load data
@@ -428,7 +433,7 @@ def main() -> None:
             epsilon = torch.randn_like(latent)
 
             # lerp
-            interpolated = ts * latent_det + (1 - ts) * epsilon
+            interpolated = ts[:, None, None, None] * latent_det + (1 - ts[:, None, None, None]) * epsilon
 
             # get dit prediction for latent, also take a hidden state for alignment loss
             t0 = time.time()

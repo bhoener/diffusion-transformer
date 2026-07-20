@@ -6,8 +6,9 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/solar-armadillo-86/"
+MODEL_PATH = "../saved_models/dit/jumping-paper-122/"
 TIMESHIFT_ALPHA = 4.63
+ddp=True
 
 from tqdm import tqdm
 import math
@@ -129,7 +130,7 @@ ae = Autoencoder(
 )
 
 ae = ae.to(device)
-ae.load_state_dict(torch.load(os.path.join(MODEL_PATH, "ae.pth")))
+ae.load_state_dict({k.replace("orig_mod." + "module." if ddp else "", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "ae.pth")).items()})
 
 latent_size = img_size // 2 ** (len(ae.encoder.channels) - 1)
 
@@ -159,23 +160,9 @@ dit = DiT(
 )
 
 dit = dit.to(device)
-dit.load_state_dict({k.replace("_orig_mod.", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit_ema_gamma_16.97.pth")).items()})
+dit.load_state_dict({k.replace("_orig_mod." + "module." if ddp else "", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit.pth")).items()})
 
 
-dino_processor = load_hf_asset(
-    AutoImageProcessor,
-    "facebook/dinov3-vith16plus-pretrain-lvd1689m",
-    "dino image processor",
-)
-dino_model = load_hf_model(
-    AutoModel,
-    "facebook/dinov3-vits16-pretrain-lvd1689m",
-    "dino model",
-)
-
-
-
-print("dino model setup")
 
 pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
 pre_bn.load_state_dict(torch.load(os.path.join(MODEL_PATH, "bn.pth")))
@@ -197,5 +184,4 @@ with torch.no_grad():
 
         decoded = ae.decode(latent)
 
-        plt.imshow(decoded.view(3, img_size, img_size).permute(1, 2, 0).detach().cpu().numpy())
-        plt.show()
+        to_image(decoded.view(3, img_size, img_size).detach().cpu()).save("output.png")
