@@ -309,11 +309,11 @@ def main() -> None:
 
 
     ds = ds.map(transform_batch, batched=True, remove_columns=[col for col in ds.column_names if col not in {"pixel_values", "t5_tokens", "t5_attn_mask", "clip_tokens"}])
-    ds = ds.with_format("torch", device=device)
+    ds = ds.with_format("torch")
 
 
     dl = torch.utils.data.DataLoader(
-        ds, batch_size=batch_size, pin_memory=False, drop_last=True, sampler=DistributedSampler(ds) if ddp else None, persistent_workers=True, num_workers=8, prefetch_factor=8, in_order=False 
+        ds, batch_size=batch_size, pin_memory=True, sampler=DistributedSampler(ds) if ddp else None, persistent_workers=True, num_workers=8, prefetch_factor=2, in_order=False
     )
 
     iterator = iter(dl)
@@ -383,13 +383,13 @@ def main() -> None:
                 # load data
                 t0 = time.time()
                 batch = next(iterator)
-                images = batch["pixel_values"]
+                images = batch["pixel_values"].to(device)
                 last_images = images
                 dino_inputs = dino_processor(images, return_tensors="pt", do_rescale=False, device=device)
                 # TODO - pre-tokenize
-                clip_tokens = batch["clip_tokens"].squeeze(1)
-                t5_tokens = batch["t5_tokens"].squeeze(1)
-                t5_attn_mask = batch["t5_attn_mask"].squeeze(1)
+                clip_tokens = batch["clip_tokens"].squeeze(1).to(device)
+                t5_tokens = batch["t5_tokens"].squeeze(1).to(device)
+                t5_attn_mask = batch["t5_attn_mask"].squeeze(1).to(device)
                 # attn_mask returned is of form
                 # [
                 # [1, 1, 1, 1, 0, 0],
