@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/jumping-paper-122/"
+MODEL_PATH = "../saved_models/dit/breezy-eon-137/"
 TIMESHIFT_ALPHA = 4.63
 ddp=True
 
@@ -114,8 +114,6 @@ resnet_blocks_per_layer = 2
 resnet_kernel_size = 3
 resnet_stride = 1
 resnet_padding = 1
-
-divergence_weight = 1e-4
 
 ae = Autoencoder(
     latent_channels=latent_channels,

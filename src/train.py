@@ -12,6 +12,7 @@ import torch._functorch.config
 import torch.nn as nn
 import torch.nn.functional as F
 import torch._inductor.config as inductor_config
+
 # ddp
 import torch.multiprocessing as mp
 import torch.distributed as dist
@@ -35,15 +36,19 @@ from transformers import (
     T5EncoderModel,
 )
 
+
 def main() -> None:
+    DO_BENCHMARK = False
+
+    os.environ["TORCHINDUCTOR_CACHE_DIR"] = ".inductor_cache"
     # for h100
     torch.backends.cuda.enable_mem_efficient_sdp(False)
-    torch.backends.cuda.enable_flash_sdp(True) 
-    
+    torch.backends.cuda.enable_flash_sdp(True)
+
     def ddp_setup() -> None:
         ddp_rank = int(os.environ["LOCAL_RANK"])
         torch.cuda.set_device(ddp_rank)
-        
+
         dist.init_process_group(backend="nccl")
 
     def ddp_cleanup() -> None:
@@ -55,36 +60,34 @@ def main() -> None:
     torch.set_num_threads(n_threads)
 
     torch.set_num_interop_threads(n_threads)
-    torch.multiprocessing.set_start_method('spawn', force=True)
+    torch.multiprocessing.set_start_method("spawn", force=True)
 
     if ddp:
-        
         ddp_setup()
 
-        
         ddp_rank = int(os.environ["LOCAL_RANK"])
         if ddp_rank == 0:
             print(f"ddp set up | world size: {dist.get_world_size()}")
-            
+
         import logging
+
         logging.getLogger().setLevel(logging.CRITICAL)
 
     os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
-    device = torch.device(f"cuda:{ddp_rank if ddp else 0}" if torch.cuda.is_available() else "cpu")
+    device = torch.device(
+        f"cuda:{ddp_rank if ddp else 0}" if torch.cuda.is_available() else "cpu"
+    )
     torch.set_float32_matmul_precision("high")
     # maybe remove, makes torch.compile happy
     torch._functorch.config.donated_buffer = False
 
-
-    PROJECT_DIR = Path(__file__).resolve().parents[1]
     HF_LOCAL_FILES_ONLY = False
 
     def log(*args) -> None:
         if ddp and ddp_rank != 0:
             return
         print(*args, flush=True)
-
 
     def load_hf_model(model_cls, model_id: str, name: str, **kwargs):
         source = "local Hugging Face cache" if HF_LOCAL_FILES_ONLY else "Hugging Face"
@@ -104,18 +107,18 @@ def main() -> None:
             ) from exc
         return model.to(device).eval()
 
-
     def load_hf_asset(asset_cls, model_id: str, name: str):
         source = "local Hugging Face cache" if HF_LOCAL_FILES_ONLY else "Hugging Face"
         log(f"loading {name} from {source}")
         try:
-            return asset_cls.from_pretrained(model_id, local_files_only=HF_LOCAL_FILES_ONLY)
+            return asset_cls.from_pretrained(
+                model_id, local_files_only=HF_LOCAL_FILES_ONLY
+            )
         except Exception as exc:
             raise RuntimeError(
                 f"Failed to load {name} ({model_id}) from {source}. "
                 "Set HF_LOCAL_FILES_ONLY=0 if you need to download missing files."
             ) from exc
-
 
     log("loading t5")
     encoder = load_hf_model(
@@ -141,14 +144,9 @@ def main() -> None:
 
     log("encoder models setup")
 
-
-    to_tensor = ToTensor()
-    to_image = ToPILImage()
-
     torch.manual_seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
-
 
     lpips_loss = lpips.LPIPS(net="vgg")
     lpips_loss = lpips_loss.to(device)
@@ -157,7 +155,6 @@ def main() -> None:
 
     img_size = 256
     n_channels = 3
-
 
     # VAE
     latent_channels = (128, 256, 512, 512, 512)
@@ -186,7 +183,9 @@ def main() -> None:
         ae = DDP(ae, device_ids=[ddp_rank])
     ae = torch.compile(ae)
 
-    latent_size = img_size // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1)
+    latent_size = img_size // 2 ** (
+        len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1
+    )
 
     log("autoencoder created")
 
@@ -201,7 +200,7 @@ def main() -> None:
 
     # training config
 
-    batch_size = 16
+    batch_size = 16  # prob change to 32 for h100
     grad_accum_steps = 1
     num_steps = 50000
     cooldown_frac = 0.1
@@ -232,8 +231,10 @@ def main() -> None:
         n_layers_multi_stream=n_layers_multi_stream,
         n_layers_single_stream=n_layers_single_stream,
         patch_size=patch_size,
-        w=img_size // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
-        h=img_size // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
+        w=img_size
+        // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
+        h=img_size
+        // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
         n_timesteps=n_timesteps,
         n_channels=z_channels,
     )
@@ -255,6 +256,7 @@ def main() -> None:
         "facebook/dinov3-vits16-pretrain-lvd1689m",
         "dino model",
     )
+    dino_model = torch.compile(dino_model)
 
     log("dino model setup")
 
@@ -269,13 +271,17 @@ def main() -> None:
 
     optimizers = {
         "dit": [
-            torch.optim.Muon([p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon),
+            torch.optim.Muon(
+                [p for p in dit.parameters() if p.ndim == 2], lr=lr_dit_muon
+            ),
             torch.optim.AdamW(
-                [p for p in dit.parameters() if p.ndim != 2], lr=lr_dit_adamw, fused=True
+                [p for p in dit.parameters() if p.ndim != 2],
+                lr=lr_dit_adamw,
+                fused=True,
             ),
         ],
         "vae": [torch.optim.AdamW(ae.parameters(), lr=lr_ae, fused=True)],
-        "proj_conv": [torch.optim.AdamW(proj_conv.parameters(), lr=lr_ae, fused=True)]
+        "proj_conv": [torch.optim.AdamW(proj_conv.parameters(), lr=lr_ae, fused=True)],
     }
 
     ds = load_dataset("arrow", data_files="data/filtered_ds/*.arrow", split="train")
@@ -288,40 +294,65 @@ def main() -> None:
         ]
     )
 
-
     def transform_batch(examples):
-        out = {"pixel_values": [], "t5_tokens": [], "t5_attn_mask": [], "clip_tokens": []}
+        out = {
+            "pixel_values": [],
+            "t5_tokens": [],
+            "t5_attn_mask": [],
+            "clip_tokens": [],
+        }
         for img, json in zip(examples["jpg"], examples["json"]):
             if img is not None and json is not None:
                 out["pixel_values"].append(transform(img))
-                t5_out = t5_tokenizer(json["caption"], padding="max_length",
+                t5_out = t5_tokenizer(
+                    json["caption"],
+                    padding="max_length",
                     max_length=pad_to_seqlen,
                     truncation=True,
-                    return_tensors="pt")
-                
+                    return_tensors="pt",
+                )
+
                 out["t5_tokens"].append(t5_out.input_ids)
                 out["t5_attn_mask"].append(t5_out.attention_mask.bool())
-                out["clip_tokens"].append(clip_tokenizer(json["caption"], padding="max_length",
-                    max_length=pad_to_seqlen,
-                    truncation=True,
-                    return_tensors="pt").input_ids)
+                out["clip_tokens"].append(
+                    clip_tokenizer(
+                        json["caption"],
+                        padding="max_length",
+                        max_length=pad_to_seqlen,
+                        truncation=True,
+                        return_tensors="pt",
+                    ).input_ids
+                )
         return out
 
-
-    ds = ds.map(transform_batch, batched=True, remove_columns=[col for col in ds.column_names if col not in {"pixel_values", "t5_tokens", "t5_attn_mask", "clip_tokens"}])
+    ds = ds.map(
+        transform_batch,
+        batched=True,
+        remove_columns=[
+            col
+            for col in ds.column_names
+            if col not in {"pixel_values", "t5_tokens", "t5_attn_mask", "clip_tokens"}
+        ],
+    )
     ds = ds.with_format("torch")
 
-
     dl = torch.utils.data.DataLoader(
-        ds, batch_size=batch_size, pin_memory=True, sampler=DistributedSampler(ds) if ddp else None, persistent_workers=True, num_workers=8, prefetch_factor=2, in_order=False
+        ds,
+        batch_size=batch_size,
+        pin_memory=True,
+        drop_last=True,
+        sampler=DistributedSampler(ds) if ddp else None,
+        persistent_workers=True,
+        num_workers=8,
+        prefetch_factor=2,
+        in_order=False,
     )
 
     iterator = iter(dl)
-    last_images = None
 
     log("dataset created")
 
-    if not ddp or ddp_rank==0:
+    if not ddp or ddp_rank == 0:
         run = wandb.init(
             project="FlowMatching",
             config={
@@ -363,8 +394,24 @@ def main() -> None:
             return (1 - cooldown_prog) * lr_base
         else:
             return lr_base
-        
-    ctx = torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16) if torch.cuda.is_bf16_supported() else contextlib.nullcontext()
+
+    def load_data() -> tuple[torch.Tensor, ...]:
+        batch = next(iterator)
+        images = batch["pixel_values"].to(device)
+        dino_inputs = dino_processor(
+            images, return_tensors="pt", do_rescale=False, device=device
+        )
+        # TODO - pre-tokenize
+        clip_tokens = batch["clip_tokens"].squeeze(1).to(device)
+        t5_tokens = batch["t5_tokens"].squeeze(1).to(device)
+        t5_attn_mask = batch["t5_attn_mask"].squeeze(1).to(device)
+        return images, dino_inputs, clip_tokens, t5_tokens, t5_attn_mask
+
+    ctx = (
+        torch.amp.autocast(device_type=device.type, dtype=torch.bfloat16)
+        if torch.cuda.is_bf16_supported()
+        else contextlib.nullcontext()
+    )
 
     for step in range(num_steps + 1):
         # -------------------------------- training step -------------------------------
@@ -382,24 +429,16 @@ def main() -> None:
             try:
                 # load data
                 t0 = time.time()
-                batch = next(iterator)
-                images = batch["pixel_values"].to(device)
-                last_images = images
-                dino_inputs = dino_processor(images, return_tensors="pt", do_rescale=False, device=device)
-                # TODO - pre-tokenize
-                clip_tokens = batch["clip_tokens"].squeeze(1).to(device)
-                t5_tokens = batch["t5_tokens"].squeeze(1).to(device)
-                t5_attn_mask = batch["t5_attn_mask"].squeeze(1).to(device)
-                # attn_mask returned is of form
-                # [
-                # [1, 1, 1, 1, 0, 0],
-                # [1, 1, 0, 0, 0, 0],
-                # ...
-                # ]
-                log("load data: ", time.time() - t0)
+                images, dino_inputs, clip_tokens, t5_tokens, t5_attn_mask = load_data()
+                if DO_BENCHMARK:
+                    log("load data: ", time.time() - t0)
             except StopIteration:
+                log("Dataloader restarting")
+                t0 = time.time()
                 iterator = iter(dl)
-                continue
+                images, dino_inputs, clip_tokens, t5_tokens, t5_attn_mask = load_data()
+                if DO_BENCHMARK:
+                    log("load data: ", time.time() - t0)
 
             t0 = time.time()
             # get dino latent
@@ -409,21 +448,24 @@ def main() -> None:
                 hidden_states = outputs.last_hidden_state
 
             # remove non-patch tokens
-            patch_tokens = hidden_states[:, 1 + dino_model.config.num_register_tokens :, :]
+            patch_tokens = hidden_states[
+                :, 1 + dino_model.config.num_register_tokens :, :
+            ]
 
             # reshape, assume H=W (square)
             B, N, D = patch_tokens.size()
             H = W = int(N**0.5)
             patch_tokens = patch_tokens.permute(0, 2, 1).contiguous().view(B, D, H, W)
-            log("dino runtime:", time.time() - t0)
-
+            if DO_BENCHMARK:
+                log("dino runtime:", time.time() - t0)
 
             t0 = time.time()
             # get clean latent, mean and var, do batchnorm for repa-e
             with ctx:
                 latent, mu, logvar, recon = ae(images)
                 latent_bn = pre_bn(latent)
-            log("vae runtime:", time.time() - t0)
+            if DO_BENCHMARK:
+                log("vae runtime:", time.time() - t0)
 
             # detach normed latent to go throuh dit (so diffusion loss doesn't leak into encoder)
             latent_det = latent_bn.detach()
@@ -433,7 +475,10 @@ def main() -> None:
             epsilon = torch.randn_like(latent)
 
             # lerp
-            interpolated = ts[:, None, None, None] * latent_det + (1 - ts[:, None, None, None]) * epsilon
+            interpolated = (
+                ts[:, None, None, None] * latent_det
+                + (1 - ts[:, None, None, None]) * epsilon
+            )
 
             # get dit prediction for latent, also take a hidden state for alignment loss
             t0 = time.time()
@@ -443,12 +488,16 @@ def main() -> None:
                     tokens=t5_tokens,
                     attn_mask=t5_attn_mask,
                     clip_tokens=clip_tokens,
-                    timesteps=torch.floor(ts.view(-1) * (dit.module.n_timesteps if ddp else dit.n_timesteps - 1))
+                    timesteps=torch.floor(
+                        ts.view(-1)
+                        * (dit.module.n_timesteps if ddp else dit.n_timesteps - 1)
+                    )
                     .long()
                     .to(device),
                     repa_layer=repa_layer,
                 )
-            log("dit runtime:", time.time() - t0)
+            if DO_BENCHMARK:
+                log("dit runtime:", time.time() - t0)
 
             # reshape to B, C, H, W for iREPA conv projection
             H_dit = W_dit = latent_size // patch_size
@@ -494,16 +543,21 @@ def main() -> None:
             # total loss
 
             loss = (
-                loss_diffusion + loss_alignment_dit + reg_loss_weight * loss_reg + loss_repa
+                loss_diffusion
+                + loss_alignment_dit
+                + reg_loss_weight * loss_reg
+                + loss_repa
             )
 
             loss = loss / grad_accum_steps
-            
-            log("loss calculation time:", time.time() - t0)
+
+            if DO_BENCHMARK:
+                log("loss calculation time:", time.time() - t0)
 
             t0 = time.time()
             loss.backward()
-            log("backward time:", time.time() - t0)
+            if DO_BENCHMARK:
+                log("backward time:", time.time() - t0)
 
             loss_accum += loss.detach()
 
@@ -518,20 +572,29 @@ def main() -> None:
 
         t0 = time.time()
         ema.update()
-        log("ema update time:", time.time() - t0)
+        if DO_BENCHMARK:
+            log("ema update time:", time.time() - t0)
 
         if step % log_every == 0:
             log(
                 f"step: {step:8d} | loss: {loss_accum.item():8.4f} | align: {loss_alignment.item():8.4f} | diff: {loss_diffusion.item():8.4f} | reg: {loss_reg.item():8.4f} | mse: {loss_mse.item():8.4f} | kl: {loss_kl.item():8.4f} | lpips: {loss_lpips.item():8.4f} | norm ae: {norm_ae.item():8.4f} | norm dit: {norm_dit.item():8.4f}"
             )
 
-        if ((step % save_every == 0 and step > 0) or step == num_steps) and (ddp_rank == 0 or not ddp):
+        if ((step % save_every == 0 and step > 0) or step == num_steps) and (
+            ddp_rank == 0 or not ddp
+        ):
             root = f"../saved_models/dit/{run.name}"
             if not os.path.exists(root):
                 os.makedirs(root)
 
-            torch.save(dit.module.state_dict() if ddp else dit.state_dict(), os.path.join(root, "dit.pth"))
-            torch.save(ae.module.state_dict() if ddp else ae.state_dict(), os.path.join(root, "ae.pth"))
+            torch.save(
+                dit.module.state_dict() if ddp else dit.state_dict(),
+                os.path.join(root, "dit.pth"),
+            )
+            torch.save(
+                ae.module.state_dict() if ddp else ae.state_dict(),
+                os.path.join(root, "ae.pth"),
+            )
             torch.save(pre_bn.state_dict(), os.path.join(root, "bn.pth"))
             for model_type, optims in optimizers.items():
                 for optim in optims:
@@ -563,17 +626,6 @@ def main() -> None:
 
     ddp_cleanup()
 
-    if last_images is not None:
-        plt.imshow(
-            ae(last_images[0].unsqueeze(0))[-1]
-            .permute(0, 2, 3, 1)
-            .view(img_size, img_size, 3)
-            .detach()
-            .cpu()
-            .numpy()
-        )
-        plt.show()
-    
+
 if __name__ == "__main__":
     main()
-

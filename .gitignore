@@ -2,6 +2,7 @@ src/wandb/
 src/__pycache__/
 *.pt
 *.pth
+src/.inductor_cache/
 src/gradients/
 saved_models/
 wandb/
