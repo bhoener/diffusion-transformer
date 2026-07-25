@@ -1,33 +1,19 @@
-import os
-import sys
-import time
 import contextlib
-from pathlib import Path
+import os
+import time
 
-import datasets
 import lpips
-import matplotlib.pyplot as plt
 import torch
 import torch._functorch.config
-import torch.nn as nn
-import torch.nn.functional as F
-import torch._inductor.config as inductor_config
 
 # ddp
-import torch.multiprocessing as mp
 import torch.distributed as dist
-from torch.utils.data.distributed import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
-
-import wandb
+import torch.nn.functional as F
 from datasets import load_dataset
-from PIL import Image
-from autoencoder import Autoencoder
-from discriminator import Discriminator
-from ema import EMA
-from model import DiT
+from torch import nn
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
 from torchvision import transforms
-from torchvision.transforms import ToPILImage, ToTensor
 from transformers import (
     AutoImageProcessor,
     AutoModel,
@@ -35,6 +21,13 @@ from transformers import (
     CLIPTextModelWithProjection,
     T5EncoderModel,
 )
+
+import wandb
+from autoencoder import Autoencoder
+
+#from discriminator import Discriminator
+from ema import EMA
+from model import DiT
 
 
 def main() -> None:
@@ -56,10 +49,10 @@ def main() -> None:
 
     ddp = "LOCAL_RANK" in os.environ
 
-    n_threads = 4
-    torch.set_num_threads(n_threads)
+    world_size = os.environ["WORLD_SIZE"]
+    torch.set_num_threads(world_size)
 
-    torch.set_num_interop_threads(n_threads)
+    torch.set_num_interop_threads(world_size)
     torch.multiprocessing.set_start_method("spawn", force=True)
 
     if ddp:
@@ -67,7 +60,7 @@ def main() -> None:
 
         ddp_rank = int(os.environ["LOCAL_RANK"])
         if ddp_rank == 0:
-            print(f"ddp set up | world size: {dist.get_world_size()}")
+            print(f"ddp set up | world size: {world_size}")
 
         import logging
 
@@ -284,6 +277,7 @@ def main() -> None:
         "proj_conv": [torch.optim.AdamW(proj_conv.parameters(), lr=lr_ae, fused=True)],
     }
 
+    # TODO: use streaming? 200k images might not be enough
     ds = load_dataset("arrow", data_files="data/filtered_ds/*.arrow", split="train")
 
     transform = transforms.Compose(

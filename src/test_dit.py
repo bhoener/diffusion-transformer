@@ -128,7 +128,7 @@ ae = Autoencoder(
 )
 
 ae = ae.to(device)
-ae.load_state_dict({k.replace("orig_mod." + "module." if ddp else "", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "ae.pth")).items()})
+ae.load_state_dict({k.replace("orig_mod." + ("module." if ddp else ""), ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "ae.pth")).items()})
 
 latent_size = img_size // 2 ** (len(ae.encoder.channels) - 1)
 
@@ -158,13 +158,14 @@ dit = DiT(
 )
 
 dit = dit.to(device)
-dit.load_state_dict({k.replace("_orig_mod." + "module." if ddp else "", ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit.pth")).items()})
+dit.load_state_dict({k.replace("_orig_mod." + ("module." if ddp else ""), ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit.pth")).items()})
 
 
 
-pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
-pre_bn.load_state_dict(torch.load(os.path.join(MODEL_PATH, "bn.pth")))
-pre_bn.eval()
+# pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
+# pre_bn.load_state_dict(torch.load(os.path.join(MODEL_PATH, "bn.pth")))
+# print(pre_bn.state_dict())
+# pre_bn.eval()
 
 with torch.no_grad():
     while (prompt := input("Enter a prompt: ")).lower() not in {"q", "quit"}:
@@ -172,10 +173,10 @@ with torch.no_grad():
         clip_tokens = clip_tokenizer.encode(prompt, return_tensors="pt").to(device)
 
         latent = torch.randn(1, z_channels, latent_size, latent_size).to(device) # ae.encode(to_tensor(Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))).unsqueeze(0).to(device))[0]
-        latent = pre_bn(latent)
+        # latent = pre_bn(latent)
 
         for timestep in tqdm(range(GENERATION_STEPS + 1)):
-            t = (TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
+            t = timestep/GENERATION_STEPS #(TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
             
             dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
             latent = latent + dit_out / GENERATION_STEPS

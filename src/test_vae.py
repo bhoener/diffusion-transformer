@@ -44,6 +44,8 @@ print(input_img.size())
 
 latent, mu, logvar = ae.encode(input_img)
 
+print(latent.mean(), latent.std())
+
 out = ae.decode(mu)
 
 print(f"Compression: {input_img.numel() / latent.numel():.2f}x")
