@@ -49,7 +49,7 @@ def main() -> None:
 
     ddp = "LOCAL_RANK" in os.environ
 
-    world_size = os.environ["WORLD_SIZE"]
+    world_size = int(os.environ["WORLD_SIZE"])
     torch.set_num_threads(world_size)
 
     torch.set_num_interop_threads(world_size)
@@ -183,17 +183,17 @@ def main() -> None:
     log("autoencoder created")
 
     # DiT
-    d_model = 512
-    n_heads = 8
-    n_layers_multi_stream = 4
-    n_layers_single_stream = 4
+    d_model = 768
+    n_heads = 12
+    n_layers_multi_stream = 6
+    n_layers_single_stream = 6
     patch_size = 8
     n_timesteps = 100
     repa_layer = 2
 
     # training config
 
-    batch_size = 16  # prob change to 32 for h100
+    batch_size = 32  # prob change to 32 for h100
     grad_accum_steps = 1
     num_steps = 50000
     cooldown_frac = 0.1
@@ -337,7 +337,7 @@ def main() -> None:
         drop_last=True,
         sampler=DistributedSampler(ds) if ddp else None,
         persistent_workers=True,
-        num_workers=8,
+        num_workers=world_size,
         prefetch_factor=2,
         in_order=False,
     )
