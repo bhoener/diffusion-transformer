@@ -38,11 +38,11 @@ def main() -> None:
     torch.backends.cuda.enable_mem_efficient_sdp(False)
     torch.backends.cuda.enable_flash_sdp(True)
 
-    def ddp_setup() -> None:
+    def ddp_setup() -> int:
         ddp_rank = int(os.environ["LOCAL_RANK"])
-        torch.cuda.set_device(ddp_rank)
 
         dist.init_process_group(backend="nccl")
+        return ddp_rank
 
     def ddp_cleanup() -> None:
         dist.destroy_process_group()
@@ -56,7 +56,7 @@ def main() -> None:
     torch.multiprocessing.set_start_method("spawn", force=True)
 
     if ddp:
-        ddp_setup()
+        ddp_rank = ddp_setup()
 
         ddp_rank = int(os.environ["LOCAL_RANK"])
         if ddp_rank == 0:
@@ -71,6 +71,8 @@ def main() -> None:
     device = torch.device(
         f"cuda:{ddp_rank if ddp else 0}" if torch.cuda.is_available() else "cpu"
     )
+    torch.cuda.set_device(device)
+    print("hello from", device)
     torch.set_float32_matmul_precision("high")
     # maybe remove, makes torch.compile happy
     torch._functorch.config.donated_buffer = False

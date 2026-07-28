@@ -236,7 +236,7 @@ class SinusoidalEmbedding(nn.Module):
 
 
 class RoPE(nn.Module):
-    def __init__(self, d_model: int, cache_positions: int = 1024, base: float = 10000):
+    def __init__(self, d_model: int, base: float = 10000):
         """
         RoPE
         d_model (int): model dimension
@@ -249,36 +249,15 @@ class RoPE(nn.Module):
 
         super().__init__()
         self.d_model = d_model
-        self.cache_positions = cache_positions
-        self.base = base
-
-        thetas = torch.empty(d_model // 2)
-
-        for i in range(d_model // 2):
-            thetas[i] = self.base ** (-2 * (i - 1) / d_model)
-
-        # register buffer?
-        thetas = torch.repeat_interleave(thetas, 2, dim=0)
-        
-        self.register_buffer("thetas", thetas)
-
+        self.register_buffer("angles", torch.repeat_interleave(base ** (-2 * torch.arange(d_model // 2) / d_model), 2, dim=-1))
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.size()
-        odds = x[:, :, 1::2]
-        evens = x[:, :, ::2]
+        positions = torch.arange(T, device=x.device)
 
-        rotated = torch.empty_like(x, device=x.device)
+        position_angles = torch.einsum("t, d -> td", positions, self.angles)
 
-        ms = torch.arange(T, device=x.device)
-
-        angles = torch.einsum("t, d -> td", ms, self.thetas).unsqueeze(0)
-        sines = torch.sin(angles)
-        cosines = torch.cos(angles)
-
-        rotated[:, :, 1::2] = -evens
-        rotated[:, :, ::2] = odds
-
-        return x * cosines[:, :T, :] + rotated * sines[:, :T, :]
+        x_shuffled = torch.stack((-x[:, :, 1::2], x[:, :, ::2]), dim=-1).view(B, T, C)
+        return x * torch.cos(position_angles).unsqueeze(0) + x_shuffled * torch.sin(position_angles).unsqueeze(0)
 
 
 class MultiStreamDiTBlock(nn.Module):
