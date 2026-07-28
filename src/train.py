@@ -40,7 +40,6 @@ def main() -> None:
 
     def ddp_setup() -> int:
         ddp_rank = int(os.environ["LOCAL_RANK"])
-
         dist.init_process_group(backend="nccl")
         return ddp_rank
 
@@ -58,7 +57,6 @@ def main() -> None:
     if ddp:
         ddp_rank = ddp_setup()
 
-        ddp_rank = int(os.environ["LOCAL_RANK"])
         if ddp_rank == 0:
             print(f"ddp set up | world size: {world_size}")
 
@@ -71,7 +69,7 @@ def main() -> None:
     device = torch.device(
         f"cuda:{ddp_rank if ddp else 0}" if torch.cuda.is_available() else "cpu"
     )
-    torch.cuda.set_device(device)
+    
     print("hello from", device)
     torch.set_float32_matmul_precision("high")
     # maybe remove, makes torch.compile happy
