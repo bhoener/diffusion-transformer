@@ -40,6 +40,14 @@ def main() -> None:
 
     def ddp_setup() -> int:
         ddp_rank = int(os.environ["LOCAL_RANK"])
+
+        if ddp_rank >= torch.cuda.device_count():
+            raise RuntimeError(
+                f"LOCAL_RANK={ddp_rank}, but only "
+                f"{torch.cuda.device_count()} CUDA devices are visible"
+            )
+
+        torch.cuda.set_device(ddp_rank)
         dist.init_process_group(backend="nccl")
         return ddp_rank
 
