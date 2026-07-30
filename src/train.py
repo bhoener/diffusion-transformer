@@ -62,6 +62,8 @@ def main() -> None:
     torch.set_num_interop_threads(world_size)
     torch.multiprocessing.set_start_method("spawn", force=True)
 
+    dataloader_workers_per_rank = 2
+
     if ddp:
         ddp_rank = ddp_setup()
 
@@ -201,7 +203,7 @@ def main() -> None:
 
     # training config
 
-    batch_size = 32  # prob change to 32 for h100
+    batch_size = 16  # prob change to 32 for h100
     grad_accum_steps = 1
     num_steps = 50000
     cooldown_frac = 0.1
@@ -345,7 +347,7 @@ def main() -> None:
         drop_last=True,
         sampler=DistributedSampler(ds) if ddp else None,
         persistent_workers=True,
-        num_workers=world_size,
+        num_workers=world_size * dataloader_workers_per_rank,
         prefetch_factor=2,
         in_order=False,
     )
