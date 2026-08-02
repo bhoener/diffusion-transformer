@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/breezy-eon-137/"
+MODEL_PATH = "../saved_models/dit/lively-totem-156/"
 TIMESHIFT_ALPHA = 4.63
 ddp=True
 
@@ -135,11 +135,11 @@ latent_size = img_size // 2 ** (len(ae.encoder.channels) - 1)
 print("autoencoder created")
 
 # DiT
-d_model = 512
-n_heads = 8
-n_layers_multi_stream = 4
-n_layers_single_stream = 4
-patch_size = 8
+d_model = 768
+n_heads = 12
+n_layers_multi_stream = 6
+n_layers_single_stream = 6
+patch_size = 2
 n_timesteps = 100
 repa_layer=2
 
@@ -176,7 +176,7 @@ with torch.no_grad():
         # latent = pre_bn(latent)
 
         for timestep in tqdm(range(GENERATION_STEPS + 1)):
-            t = timestep/GENERATION_STEPS #(TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
+            t = (TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
             
             dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
             latent = latent + dit_out / GENERATION_STEPS

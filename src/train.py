@@ -193,13 +193,13 @@ def main() -> None:
     log("autoencoder created")
 
     # DiT
-    d_model = 768
-    n_heads = 12
-    n_layers_multi_stream = 6
-    n_layers_single_stream = 6
-    patch_size = 8
+    d_model = 1152
+    n_heads = 36
+    n_layers_multi_stream = 14
+    n_layers_single_stream = 14
+    patch_size = 2
     n_timesteps = 100
-    repa_layer = 2
+    repa_layer = 10
 
     # training config
 
@@ -405,7 +405,6 @@ def main() -> None:
         dino_inputs = dino_processor(
             images, return_tensors="pt", do_rescale=False, device=device
         )
-        # TODO - pre-tokenize
         clip_tokens = batch["clip_tokens"].squeeze(1).to(device)
         t5_tokens = batch["t5_tokens"].squeeze(1).to(device)
         t5_attn_mask = batch["t5_attn_mask"].squeeze(1).to(device)

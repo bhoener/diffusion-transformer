@@ -71,3 +71,6 @@ to try:
 
  - make vae do more compression (done)
  - non-uniform timestep sampling for training
+
+hmmm
+ https://arxiv.org/pdf/2509.20952

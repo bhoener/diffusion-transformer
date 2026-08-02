@@ -38,7 +38,7 @@ to_image = ToPILImage()
 src = Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))
 input_img = to_tensor(src).unsqueeze(0).to(device)
 
-ae.load_state_dict({k.replace("_orig_mod." + "module." if ddp else "", "") : v for k, v in torch.load("../saved_models/dit/breezy-eon-137/ae.pth").items()})
+ae.load_state_dict({k.replace("_orig_mod." + "module." if ddp else "", "") : v for k, v in torch.load("../saved_models/dit/lively-totem-156/ae.pth").items()})
 
 print(input_img.size())
 
