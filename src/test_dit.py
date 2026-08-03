@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/lively-totem-156/"
+MODEL_PATH = "../saved_models/dit/upbeat-feather-158/"
 TIMESHIFT_ALPHA = 4.63
 ddp=True
 
@@ -135,10 +135,10 @@ latent_size = img_size // 2 ** (len(ae.encoder.channels) - 1)
 print("autoencoder created")
 
 # DiT
-d_model = 768
-n_heads = 12
-n_layers_multi_stream = 6
-n_layers_single_stream = 6
+d_model = 1152
+n_heads = 36
+n_layers_multi_stream = 14
+n_layers_single_stream = 14
 patch_size = 2
 n_timesteps = 100
 repa_layer=2
@@ -158,7 +158,7 @@ dit = DiT(
 )
 
 dit = dit.to(device)
-dit.load_state_dict({k.replace("_orig_mod." + ("module." if ddp else ""), ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit.pth")).items()})
+dit.load_state_dict({k.replace("_orig_mod." + ("module." if ddp else ""), ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit_ema_gamma_16.97.pth")).items()})
 
 
 
@@ -179,7 +179,7 @@ with torch.no_grad():
             t = (TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
             
             dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
-            latent = latent + dit_out / GENERATION_STEPS
+            latent = latent + 5 * dit_out / GENERATION_STEPS
 
         decoded = ae.decode(latent)
 

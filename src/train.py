@@ -56,11 +56,12 @@ def main() -> None:
 
     ddp = "LOCAL_RANK" in os.environ
 
-    world_size = int(os.environ["WORLD_SIZE"])
-    torch.set_num_threads(world_size)
+    world_size = int(os.environ["WORLD_SIZE"]) if ddp else 1
+    if ddp:
+        torch.set_num_threads(world_size)
 
-    torch.set_num_interop_threads(world_size)
-    torch.multiprocessing.set_start_method("spawn", force=True)
+        torch.set_num_interop_threads(world_size)
+        torch.multiprocessing.set_start_method("spawn", force=True)
 
     dataloader_workers_per_rank = 2
 
@@ -203,7 +204,7 @@ def main() -> None:
 
     # training config
 
-    batch_size = 16  # prob change to 32 for h100
+    batch_size = 32  # prob change to 32 for h100
     grad_accum_steps = 1
     num_steps = 50000
     cooldown_frac = 0.1

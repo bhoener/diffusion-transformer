@@ -3,11 +3,12 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from einops import rearrange
 from transformers import CLIPTextModelWithProjection, T5EncoderModel
 
 
 def norm(x: torch.Tensor) -> torch.Tensor:
-    return F.rms_norm(x, x.size()[1:])
+    return F.rms_norm(x, (x.size(-1),))
 
 
 class MLP(nn.Module):
@@ -52,7 +53,7 @@ class MultiHeadAttention(nn.Module):
 
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
-        self.rope = RoPE(d_model=d_model)
+        self.rope = RoPE(d=d_model//n_heads)
 
         self.wq = nn.Linear(d_model, d_model)
         self.wk = nn.Linear(d_model, d_model)
@@ -64,8 +65,8 @@ class MultiHeadAttention(nn.Module):
         self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         B, T, C = x.size()
-        Q = norm(self.rope(self.wq(x)).view(B, T, self.n_heads, -1).transpose(1, 2))
-        K = norm(self.rope(self.wk(x)).view(B, T, self.n_heads, -1).transpose(1, 2))
+        Q = norm(self.rope(self.wq(x).view(B, T, self.n_heads, -1)).transpose(1, 2))
+        K = norm(self.rope(self.wk(x).view(B, T, self.n_heads, -1)).transpose(1, 2))
         V = self.wv(x).view(B, T, self.n_heads, -1).transpose(1, 2)
 
         attn_scores = (
@@ -97,9 +98,9 @@ class CrossAttention(MultiHeadAttention):
     ) -> torch.Tensor:
         B, N, C = img_x.size()
         T = text_x.size(1)
-        Q = norm(self.rope(self.wq(img_x)).view(B, N, self.n_heads, -1).transpose(1, 2))
+        Q = norm(self.rope(self.wq(img_x).view(B, N, self.n_heads, -1)).transpose(1, 2))
         K = norm(
-            self.rope(self.wk(text_x)).view(B, T, self.n_heads, -1).transpose(1, 2)
+            self.rope(self.wk(text_x).view(B, T, self.n_heads, -1)).transpose(1, 2)
         )
         V = self.wv(text_x).view(B, T, self.n_heads, -1).transpose(1, 2)
 
@@ -182,7 +183,7 @@ class Depatchify(nn.Module):
         n_channels (int): image channels
 
         input size: (B, T, C)
-        output size: (B, c, W, H)
+        output size: (B, c, H, W)
         """
         super().__init__()
         self.d_model = d_model
@@ -198,13 +199,8 @@ class Depatchify(nn.Module):
         # we project C -> c * p^2
         # view as B, N, c, p, p
         # transpose to B, c, N, p, p
-        # reshape to B, c, W, H
-        return (
-            self.proj(x)[:, :N, :]
-            .view(B, N, self.n_channels, self.patch_size, self.patch_size)
-            .permute(0, 2, 1, 3, 4)
-            .reshape(B, self.n_channels, self.w, self.h)
-        )
+        # reshape to B, c, H, W
+        return rearrange(self.proj(x)[:, :N, :], "b (npy npx) (c psy psx) -> b c (npy psy) (npx psx)", psx=self.patch_size, psy=self.patch_size, npx=self.w//self.patch_size, npy=self.h//self.patch_size)
 
 
 class SinusoidalEmbedding(nn.Module):
@@ -236,28 +232,28 @@ class SinusoidalEmbedding(nn.Module):
 
 
 class RoPE(nn.Module):
-    def __init__(self, d_model: int, base: float = 10000):
+    def __init__(self, d: int, base: float = 10000):
         """
         RoPE
-        d_model (int): model dimension
+        d (int): model dimension
         cache_positions (int): number of precomputed sines/cosines to store
         base (float): base used for calculating thetas
 
-        input size: (B, T, C)
-        output size: (B, T, C)
+        input size: (B, T, n, d)
+        output size: (B, T, n, d)
         """
 
         super().__init__()
-        self.d_model = d_model
-        self.register_buffer("angles", torch.repeat_interleave(base ** (-2 * torch.arange(d_model // 2) / d_model), 2, dim=-1))
+        self.d = d
+        self.register_buffer("angles", torch.repeat_interleave(base ** (-2 * torch.arange(d // 2) / d), 2, dim=-1))
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, T, C = x.size()
+        B, T, n, d = x.size()
         positions = torch.arange(T, device=x.device)
 
         position_angles = torch.einsum("t, d -> td", positions, self.angles)
 
-        x_shuffled = torch.stack((-x[:, :, 1::2], x[:, :, ::2]), dim=-1).view(B, T, C)
-        return x * torch.cos(position_angles).unsqueeze(0) + x_shuffled * torch.sin(position_angles).unsqueeze(0)
+        x_shuffled = torch.stack((-x[:, :, :, 1::2], x[:, :, :, ::2]), dim=-1).view(B, T, n, d)
+        return x * torch.cos(position_angles).unsqueeze(0).unsqueeze(2) + x_shuffled * torch.sin(position_angles).unsqueeze(0).unsqueeze(2)
 
 
 class MultiStreamDiTBlock(nn.Module):
