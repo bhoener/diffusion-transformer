@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/upbeat-feather-158/"
+MODEL_PATH = "../saved_models/dit/peach-sponge-166/"
 TIMESHIFT_ALPHA = 4.63
 ddp=True
 
@@ -162,10 +162,11 @@ dit.load_state_dict({k.replace("_orig_mod." + ("module." if ddp else ""), ""): v
 
 
 
-# pre_bn = nn.BatchNorm2d(z_channels, affine=False).to(device)
-# pre_bn.load_state_dict(torch.load(os.path.join(MODEL_PATH, "bn.pth")))
-# print(pre_bn.state_dict())
-# pre_bn.eval()
+
+bn_state_dict = torch.load(os.path.join(MODEL_PATH, "bn.pth"))
+bn_var = bn_state_dict["running_var"]
+bn_mean = bn_state_dict["running_mean"]
+print(bn_mean.size(), bn_var.size())
 
 with torch.no_grad():
     while (prompt := input("Enter a prompt: ")).lower() not in {"q", "quit"}:
@@ -173,13 +174,14 @@ with torch.no_grad():
         clip_tokens = clip_tokenizer.encode(prompt, return_tensors="pt").to(device)
 
         latent = torch.randn(1, z_channels, latent_size, latent_size).to(device) # ae.encode(to_tensor(Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))).unsqueeze(0).to(device))[0]
-        # latent = pre_bn(latent)
 
-        for timestep in tqdm(range(GENERATION_STEPS + 1)):
-            t = (TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
+        for timestep in tqdm(range(GENERATION_STEPS)):
+            t = timestep / GENERATION_STEPS #(TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
             
             dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
-            latent = latent + 5 * dit_out / GENERATION_STEPS
+            latent = latent + dit_out / GENERATION_STEPS
+
+        latent = (latent + bn_mean.view(1, -1, 1, 1)) * (bn_var.view(1, -1, 1, 1) ** 0.5)
 
         decoded = ae.decode(latent)
 
