@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/peach-sponge-166/"
+MODEL_PATH = "../saved_models/dit/confused-wildflower-167/"
 TIMESHIFT_ALPHA = 4.63
 ddp=True
 
@@ -106,7 +106,7 @@ n_channels = 3
 
 
 # VAE
-latent_channels = (128, 256, 512, 512, 512)
+latent_channels = (128, 256, 512, 512)
 z_channels = 32
 kernel_size = 3
 padding = 1
@@ -158,7 +158,7 @@ dit = DiT(
 )
 
 dit = dit.to(device)
-dit.load_state_dict({k.replace("_orig_mod." + ("module." if ddp else ""), ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit_ema_gamma_16.97.pth")).items()})
+dit.load_state_dict({k.replace("_orig_mod." + ("module." if ddp else ""), ""): v for k, v in torch.load(os.path.join(MODEL_PATH, "dit.pth")).items()})
 
 
 

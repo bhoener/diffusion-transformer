@@ -288,7 +288,7 @@ class MultiStreamDiTBlock(nn.Module):
         img_x = (
             img_x
             + self.cross_attention(
-                img_x * condition[:, self.layer_index, 0, None, None]
+                norm(img_x) * condition[:, self.layer_index, 0, None, None]
                 + condition[:, self.layer_index, 1, None, None],
                 text_x * condition[:, self.layer_index, 2, None, None]
                 + condition[:, self.layer_index, 3, None, None],
@@ -464,7 +464,7 @@ class DiT(nn.Module):
 
         with torch.no_grad():
             encoder_hiddens = self.encoder(
-                tokens, output_hidden_states=False
+                tokens, output_hidden_states=False, attention_mask=attn_mask
             ).last_hidden_state
             text_pool = self.clip_encoder(
                 clip_tokens, output_hidden_states=False
@@ -489,7 +489,7 @@ class DiT(nn.Module):
 
         repa_out = None
 
-        single_stream_attn_mask = torch.cat((torch.ones(B, N, device=latent.device), attn_mask), dim=-1).view(B, 1, 1, -1) if attn_mask is not None else None
+        single_stream_attn_mask = torch.cat((torch.ones(B, N, device=latent.device).bool(), attn_mask), dim=-1).view(B, 1, 1, -1) if attn_mask is not None else None
         for i, layer in enumerate(self.single_stream_layers):
             x = layer(x, single_stream_condition, attn_mask=single_stream_attn_mask)
             if i == repa_layer:

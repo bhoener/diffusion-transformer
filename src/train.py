@@ -161,7 +161,7 @@ def main() -> None:
     n_channels = 3
 
     # VAE
-    latent_channels = (128, 256, 512, 512, 512)
+    latent_channels = (128, 256, 512, 512)
     z_channels = 32
     kernel_size = 3
     padding = 1
@@ -585,7 +585,7 @@ def main() -> None:
             )
 
         if ((step % save_every == 0 and step > 0) or step == num_steps) and (
-            ddp_rank == 0 or not ddp
+            not ddp or ddp_rank==0
         ):
             root = f"../saved_models/dit/{run.name}"
             if not os.path.exists(root):

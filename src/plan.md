@@ -74,3 +74,6 @@ to try:
 
 hmmm
  https://arxiv.org/pdf/2509.20952
+
+
+TODO: make ada-LN channel-wise
