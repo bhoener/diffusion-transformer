@@ -206,7 +206,7 @@ def main() -> None:
 
     batch_size = 32  # prob change to 32 for h100
     grad_accum_steps = 1
-    num_steps = 65000
+    num_steps = 60000
     cooldown_frac = 0.25
     lr_ae = 3e-4
     lr_dit_muon = 1e-2
