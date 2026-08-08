@@ -6,8 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/confused-wildflower-167/"
-TIMESHIFT_ALPHA = 4.63
+MODEL_PATH = "../saved_models/dit/drawn-frog-168/"
 ddp=True
 
 from tqdm import tqdm
@@ -176,7 +175,7 @@ with torch.no_grad():
         latent = torch.randn(1, z_channels, latent_size, latent_size).to(device) # ae.encode(to_tensor(Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))).unsqueeze(0).to(device))[0]
 
         for timestep in tqdm(range(GENERATION_STEPS)):
-            t = timestep / GENERATION_STEPS #(TIMESHIFT_ALPHA * (timestep / GENERATION_STEPS)) / (1 + (TIMESHIFT_ALPHA - 1) * (timestep / GENERATION_STEPS))
+            t = timestep / GENERATION_STEPS
             
             dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
             latent = latent + dit_out / GENERATION_STEPS

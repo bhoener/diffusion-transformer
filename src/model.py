@@ -53,7 +53,7 @@ class MultiHeadAttention(nn.Module):
 
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
-        self.rope = RoPE(d=d_model//n_heads)
+        self.rope = RoPE(d=d_model // n_heads)
 
         self.wq = nn.Linear(d_model, d_model)
         self.wk = nn.Linear(d_model, d_model)
@@ -200,7 +200,14 @@ class Depatchify(nn.Module):
         # view as B, N, c, p, p
         # transpose to B, c, N, p, p
         # reshape to B, c, H, W
-        return rearrange(self.proj(x)[:, :N, :], "b (npy npx) (c psy psx) -> b c (npy psy) (npx psx)", psx=self.patch_size, psy=self.patch_size, npx=self.w//self.patch_size, npy=self.h//self.patch_size)
+        return rearrange(
+            self.proj(x)[:, :N, :],
+            "b (npy npx) (c psy psx) -> b c (npy psy) (npx psx)",
+            psx=self.patch_size,
+            psy=self.patch_size,
+            npx=self.w // self.patch_size,
+            npy=self.h // self.patch_size,
+        )
 
 
 class SinusoidalEmbedding(nn.Module):
@@ -245,19 +252,27 @@ class RoPE(nn.Module):
 
         super().__init__()
         self.d = d
-        self.register_buffer("angles", torch.repeat_interleave(base ** (-2 * torch.arange(d // 2) / d), 2, dim=-1))
+        self.register_buffer(
+            "angles",
+            torch.repeat_interleave(base ** (-2 * torch.arange(d // 2) / d), 2, dim=-1),
+        )
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, n, d = x.size()
         positions = torch.arange(T, device=x.device)
 
         position_angles = torch.einsum("t, d -> td", positions, self.angles)
 
-        x_shuffled = torch.stack((-x[:, :, :, 1::2], x[:, :, :, ::2]), dim=-1).view(B, T, n, d)
-        return x * torch.cos(position_angles).unsqueeze(0).unsqueeze(2) + x_shuffled * torch.sin(position_angles).unsqueeze(0).unsqueeze(2)
+        x_shuffled = torch.stack((-x[:, :, :, 1::2], x[:, :, :, ::2]), dim=-1).view(
+            B, T, n, d
+        )
+        return x * torch.cos(position_angles).unsqueeze(0).unsqueeze(
+            2
+        ) + x_shuffled * torch.sin(position_angles).unsqueeze(0).unsqueeze(2)
 
 
 class MultiStreamDiTBlock(nn.Module):
-    def __init__(self, d_model: int, n_heads: int, layer_index: int):
+    def __init__(self, d_model: int, n_heads: int, clip_d_model: int):
         """
         MultiStreamDiTBlock
         d_model (int): model dimension
@@ -272,43 +287,50 @@ class MultiStreamDiTBlock(nn.Module):
         super().__init__()
         self.d_model = d_model
         self.n_heads = n_heads
-        self.layer_index = layer_index
 
         self.cross_attention = CrossAttention(d_model=d_model, n_heads=n_heads)
 
         self.mlp = SwiGLU(d_in=d_model, d_h=d_model * 4, d_out=d_model)
 
+        self.adaln_mlp = MLP(clip_d_model, d_model * 4, 8 * d_model)
+
+        nn.init.zeros_(self.adaln_mlp.l2.weight)
+        nn.init.zeros_(self.adaln_mlp.l2.bias)
+
     def forward(
         self,
         img_x: torch.Tensor,
         text_x: torch.Tensor,
-        condition: torch.Tensor,
+        condition_input: torch.Tensor,
         attn_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, ...]:
+        B, T, C = text_x.size()
+        condition = self.adaln_mlp(condition_input).view(B, 1, 8, C)
+        
         img_x = (
             img_x
             + self.cross_attention(
-                norm(img_x) * condition[:, self.layer_index, 0, None, None]
-                + condition[:, self.layer_index, 1, None, None],
-                text_x * condition[:, self.layer_index, 2, None, None]
-                + condition[:, self.layer_index, 3, None, None],
+                norm(img_x) * condition[:, :, 0]
+                + condition[:, :, 1],
+                text_x * condition[:, :, 2]
+                + condition[:, :, 3],
                 attn_mask=attn_mask,
             )
-            * condition[:, self.layer_index, 4, None, None]
+            * condition[:, :, 4]
         )
         img_x = (
             img_x
             + self.mlp(
-                norm(img_x) * condition[:, self.layer_index, 5, None, None]
-                + condition[:, self.layer_index, 6, None, None]
+                norm(img_x) * condition[:, :, 5]
+                + condition[:, :, 6]
             )
-            * condition[:, self.layer_index, 7, None, None]
+            * condition[:, :, 7]
         )
         return img_x, text_x
 
 
 class SingleStreamDitBlock(nn.Module):
-    def __init__(self, d_model: int, n_heads: int, layer_index: int):
+    def __init__(self, d_model: int, n_heads: int, clip_d_model: int):
         """
         SingleStreamDitBlock
         d_model (int): model dimension
@@ -323,34 +345,41 @@ class SingleStreamDitBlock(nn.Module):
         super().__init__()
         self.d_model = d_model
         self.n_heads = n_heads
-        self.layer_index = layer_index
 
         self.attention = MultiHeadAttention(d_model=d_model, n_heads=n_heads)
 
         self.mlp = SwiGLU(d_model, d_model * 4, d_model)
 
+        self.adaln_mlp = MLP(clip_d_model, d_model * 4, 6 * d_model)
+
+        nn.init.zeros_(self.adaln_mlp.l2.weight)
+        nn.init.zeros_(self.adaln_mlp.l2.bias)
+
     def forward(
         self,
         x: torch.Tensor,
-        condition: torch.Tensor,
+        condition_input: torch.Tensor,
         attn_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
+        B, T, C = x.size()
+        condition = self.adaln_mlp(condition_input).view(B, 1, 6, C)
+        
         x = (
             x
             + self.attention(
-                norm(x) * condition[:, self.layer_index, 0, None, None]
-                + condition[:, self.layer_index, 1, None, None],
+                norm(x) * condition[:, :, 0]
+                + condition[:, :, 1],
                 attn_mask=attn_mask,
             )
-            * condition[:, self.layer_index, 2, None, None]
+            * condition[:, :, 2]
         )
         x = (
             x
             + self.mlp(
-                norm(x) * condition[:, self.layer_index, 3, None, None]
-                + condition[:, self.layer_index, 4, None, None]
+                norm(x) * condition[:, :, 3]
+                + condition[:, :, 4]
             )
-            * condition[:, self.layer_index, 5, None, None]
+            * condition[:, :, 5]
         )
         return x
 
@@ -415,28 +444,16 @@ class DiT(nn.Module):
             n_embeddings=n_timesteps, d_model=self.clip_encoder.config.hidden_size
         )
 
-        self.multi_stream_condition_mlp = MLP(
-            self.clip_encoder.config.hidden_size, d_model, n_layers_multi_stream * 8
-        )
-        nn.init.zeros_(self.multi_stream_condition_mlp.l2.weight)
-        nn.init.zeros_(self.multi_stream_condition_mlp.l2.bias)
-
-        self.single_stream_condition_mlp = MLP(
-            self.clip_encoder.config.hidden_size, d_model, n_layers_single_stream * 6
-        )
-        nn.init.zeros_(self.single_stream_condition_mlp.l2.weight)
-        nn.init.zeros_(self.single_stream_condition_mlp.l2.bias)
-
         self.multi_stream_layers = nn.ModuleList(
             [
-                MultiStreamDiTBlock(d_model=d_model, n_heads=n_heads, layer_index=i)
+                MultiStreamDiTBlock(d_model=d_model, n_heads=n_heads, clip_d_model=self.clip_encoder.config.hidden_size)
                 for i in range(n_layers_multi_stream)
             ]
         )
 
         self.single_stream_layers = nn.ModuleList(
             [
-                SingleStreamDitBlock(d_model=d_model, n_heads=n_heads, layer_index=i)
+                SingleStreamDitBlock(d_model=d_model, n_heads=n_heads, clip_d_model=self.clip_encoder.config.hidden_size)
                 for i in range(n_layers_single_stream)
             ]
         )
@@ -472,26 +489,30 @@ class DiT(nn.Module):
 
         text_x = self.embedding_proj(norm(encoder_hiddens))
         condition_input = norm(text_pool) + self.time_embedding(timesteps)
-        multi_stream_condition = self.multi_stream_condition_mlp(condition_input).view(
-            B, self.n_layers_multi_stream, -1
-        )
-
-        single_stream_condition = self.single_stream_condition_mlp(
-            condition_input
-        ).view(B, self.n_layers_single_stream, -1)
 
         for layer in self.multi_stream_layers:
             latent_x, text_x = layer(
-                latent_x, text_x, multi_stream_condition, attn_mask=(attn_mask.view(B, 1, 1, -1) if attn_mask is not None else None)
+                latent_x,
+                text_x,
+                condition_input,
+                attn_mask=(
+                    attn_mask.view(B, 1, 1, -1) if attn_mask is not None else None
+                ),
             )
 
         x = torch.cat((latent_x, text_x), dim=1)
 
         repa_out = None
 
-        single_stream_attn_mask = torch.cat((torch.ones(B, N, device=latent.device).bool(), attn_mask), dim=-1).view(B, 1, 1, -1) if attn_mask is not None else None
+        single_stream_attn_mask = (
+            torch.cat(
+                (torch.ones(B, N, device=latent.device).bool(), attn_mask), dim=-1
+            ).view(B, 1, 1, -1)
+            if attn_mask is not None
+            else None
+        )
         for i, layer in enumerate(self.single_stream_layers):
-            x = layer(x, single_stream_condition, attn_mask=single_stream_attn_mask)
+            x = layer(x, condition_input, attn_mask=single_stream_attn_mask)
             if i == repa_layer:
                 repa_out = x[:, :N, :]
 
