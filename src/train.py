@@ -148,9 +148,9 @@ def main() -> None:
 
     log("encoder models setup")
 
-    torch.manual_seed(42)
+    torch.manual_seed(42 + (ddp_rank if ddp else 0))
     if torch.cuda.is_available():
-        torch.cuda.manual_seed(42)
+        torch.cuda.manual_seed(42 + (ddp_rank if ddp else 0))
 
     lpips_loss = lpips.LPIPS(net="vgg")
     lpips_loss = lpips_loss.to(device)
@@ -206,7 +206,7 @@ def main() -> None:
 
     batch_size = 32  # prob change to 32 for h100
     grad_accum_steps = 1
-    num_steps = 60000
+    num_steps = 50000
     cooldown_frac = 0.25
     lr_ae = 3e-4
     lr_dit_muon = 1e-2
@@ -348,7 +348,7 @@ def main() -> None:
         drop_last=True,
         sampler=DistributedSampler(ds) if ddp else None,
         persistent_workers=True,
-        num_workers=world_size * dataloader_workers_per_rank,
+        num_workers=dataloader_workers_per_rank,
         prefetch_factor=2,
         in_order=False,
     )
@@ -532,7 +532,7 @@ def main() -> None:
 
             # reg losses
             loss_mse = ((images - recon) ** 2).mean()
-            loss_kl = (logvar.exp() + mu**2 - 1 - logvar).mean()
+            loss_kl = (torch.clip(logvar, max=4).exp() + mu**2 - 1 - logvar).mean()
             loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1).mean()
 
             loss_reg = (
@@ -567,6 +567,7 @@ def main() -> None:
 
         norm_ae = torch.nn.utils.clip_grad_norm_(ae.parameters(), 1.0)
         norm_dit = torch.nn.utils.clip_grad_norm_(dit.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(proj_conv.parameters(), 1.0)
 
         for model_optims in optimizers.values():
             for optim in model_optims:
