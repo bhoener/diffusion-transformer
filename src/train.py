@@ -252,7 +252,7 @@ def main() -> None:
 
     dino_processor = load_hf_asset(
         AutoImageProcessor,
-        "facebook/dinov3-vith16plus-pretrain-lvd1689m",
+        "facebook/dinov3-vits16-pretrain-lvd1689m",
         "dino image processor",
     )
     dino_model = load_hf_model(

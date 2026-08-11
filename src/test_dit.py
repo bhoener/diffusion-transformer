@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/drawn-frog-168/"
+MODEL_PATH = "../saved_models/dit/radiant-microwave-176/"
 ddp=True
 
 from tqdm import tqdm
