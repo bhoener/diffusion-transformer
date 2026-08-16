@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from transformers import CLIPTextModelWithProjection, T5EncoderModel
+
 
 
 def norm(x: torch.Tensor) -> torch.Tensor:
@@ -78,43 +78,64 @@ class MultiHeadAttention(nn.Module):
         return self.wo(attn_scores.view(B, T, C))
 
 
-class CrossAttention(MultiHeadAttention):
+class DoubleStreamAttention(nn.Module):
     def __init__(self, d_model: int, n_heads: int):
         """
         CrossAttention
         d_model (int): model dimension
         n_heads (int): number of heads to split d_model across
 
-        input size: (B, N, C), (B, T, C)
-        output size: (B, N, C)
+        input size: (B, T, C), (B, N, C)
+        output size: (B, T, C), (B, N, C)
         """
-        super().__init__(d_model=d_model, n_heads=n_heads)
+        super().__init__()
+        self.d_model = d_model
+        self.n_heads = n_heads
+
+        assert d_model % n_heads == 0
+
+        self.rope = RoPE(d=d_model // n_heads)
+        
+        self.wq_text = nn.Linear(d_model, d_model)
+        self.wk_text = nn.Linear(d_model, d_model)
+        self.wv_text = nn.Linear(d_model, d_model)
+
+        self.wq_image = nn.Linear(d_model, d_model)
+        self.wk_image = nn.Linear(d_model, d_model)
+        self.wv_image = nn.Linear(d_model, d_model)
+
+        self.wo_text = nn.Linear(d_model, d_model)
+        self.wo_image = nn.Linear(d_model, d_model)
 
     def forward(
         self,
-        img_x: torch.Tensor,
+        image_x: torch.Tensor,
         text_x: torch.Tensor,
         attn_mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        B, N, C = img_x.size()
-        T = text_x.size(1)
-        Q = norm(self.rope(self.wq(img_x).view(B, N, self.n_heads, -1)).transpose(1, 2))
-        K = norm(
-            self.rope(self.wk(text_x).view(B, T, self.n_heads, -1)).transpose(1, 2)
-        )
-        V = self.wv(text_x).view(B, T, self.n_heads, -1).transpose(1, 2)
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        B, N, C = image_x.size()
 
-        attn_scores = (
-            F.scaled_dot_product_attention(Q, K, V, attn_mask=attn_mask)
-            .permute(0, 2, 1, 3)
-            .contiguous()
-        )
+        Q_image = rearrange(self.wq_image(image_x), "b t (h d) -> b h t d", h=self.n_heads)
+        K_image = rearrange(self.wk_image(image_x), "b t (h d) -> b h t d", h=self.n_heads)
+        V_image = rearrange(self.wv_image(image_x), "b t (h d) -> b h t d", h=self.n_heads)
 
-        # attn(Q, K, V) -> softmax(Q K^T)V
-        # (B, H, N, d) x (B, H, d, T) -> (B, H, N, T)
-        # (B, H, N, T) x (B, H, T, d) -> (B, H, N, d) -> (B, N, H, d)
+        Q_text = rearrange(self.wq_text(text_x), "b t (h d) -> b h t d", h=self.n_heads)
+        K_text = rearrange(self.wk_text(text_x), "b t (h d) -> b h t d", h=self.n_heads)
+        V_text = rearrange(self.wv_text(text_x), "b t (h d) -> b h t d", h=self.n_heads)
 
-        return self.wo(attn_scores.view(B, N, C))
+        
+
+        Q = self.rope(norm(torch.cat((Q_image, Q_text), dim=2)))
+        K = self.rope(norm(torch.cat((K_image, K_text), dim=2)))
+        V = self.rope(norm(torch.cat((V_image, V_text), dim=2)))
+
+        attn_outs = rearrange(F.scaled_dot_product_attention(Q, K, V, attn_mask=attn_mask), "b h t d -> b t (h d)")
+
+        
+        attn_outs_image = attn_outs[:, :N, :]
+        attn_outs_text = attn_outs[:, N:, :]
+
+        return self.wo_image(attn_outs_image), self.wo_text(attn_outs_text)
 
 
 class SwiGLU(nn.Module):
@@ -272,7 +293,7 @@ class RoPE(nn.Module):
 
 
 class MultiStreamDiTBlock(nn.Module):
-    def __init__(self, d_model: int, n_heads: int, clip_d_model: int):
+    def __init__(self, d_model: int, n_heads: int):
         """
         MultiStreamDiTBlock
         d_model (int): model dimension
@@ -288,49 +309,48 @@ class MultiStreamDiTBlock(nn.Module):
         self.d_model = d_model
         self.n_heads = n_heads
 
-        self.cross_attention = CrossAttention(d_model=d_model, n_heads=n_heads)
+        self.attention = DoubleStreamAttention(d_model=d_model, n_heads=n_heads)
 
-        self.mlp = SwiGLU(d_in=d_model, d_h=d_model * 4, d_out=d_model)
+        self.mlp_image = SwiGLU(d_in=d_model, d_h=d_model * 4, d_out=d_model)
+        self.mlp_text = SwiGLU(d_in=d_model, d_h=d_model * 4, d_out=d_model)
 
-        self.adaln_mlp = MLP(clip_d_model, d_model * 4, 8 * d_model)
+        
+        self.adaln_mlp_image = nn.Sequential(nn.SiLU(), nn.Linear(d_model, 6 * d_model))
+        self.adaln_mlp_text = nn.Sequential(nn.SiLU(), nn.Linear(d_model, 6 * d_model))
 
-        nn.init.zeros_(self.adaln_mlp.l2.weight)
-        nn.init.zeros_(self.adaln_mlp.l2.bias)
+        nn.init.zeros_(self.adaln_mlp_image[1].weight)
+        nn.init.zeros_(self.adaln_mlp_image[1].bias)
+        nn.init.zeros_(self.adaln_mlp_text[1].weight)
+        nn.init.zeros_(self.adaln_mlp_text[1].bias)
 
     def forward(
         self,
-        img_x: torch.Tensor,
+        image_x: torch.Tensor,
         text_x: torch.Tensor,
         condition_input: torch.Tensor,
-        attn_mask: torch.Tensor,
+        attn_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, ...]:
         B, T, C = text_x.size()
-        condition = self.adaln_mlp(condition_input).view(B, 1, 8, C)
-        
-        img_x = (
-            img_x
-            + self.cross_attention(
-                norm(img_x) * condition[:, :, 0]
-                + condition[:, :, 1],
-                text_x * condition[:, :, 2]
-                + condition[:, :, 3],
-                attn_mask=attn_mask,
-            )
-            * condition[:, :, 4]
-        )
-        img_x = (
-            img_x
-            + self.mlp(
-                norm(img_x) * condition[:, :, 5]
-                + condition[:, :, 6]
-            )
-            * condition[:, :, 7]
-        )
-        return img_x, text_x
+        N = image_x.size(1)
+        condition_image = self.adaln_mlp_image(condition_input).view(B, 6, C)
 
+        condition_text = self.adaln_mlp_text(condition_input).view(B, 6, C)
+        
+        image_shift_attn, image_scale_pre_attn, image_scale_attn, image_shift_mlp, image_scale_pre_mlp, image_scale_mlp = condition_image.chunk(6, dim=1)
+        text_shift_attn, text_scale_pre_attn, text_scale_attn, text_shift_mlp, text_scale_pre_mlp, text_scale_mlp = condition_text.chunk(6, dim=1)
+
+        attn_o_image, attn_o_text = self.attention(norm(image_x) * (1 + image_scale_pre_attn) + image_shift_attn, norm(text_x) * (1 + text_scale_pre_attn) + text_shift_attn, attn_mask=attn_mask)
+
+        image_x = image_x + attn_o_image * image_scale_attn
+        image_x = image_x + self.mlp_image(norm(image_x) * (1 + image_scale_pre_mlp) + image_shift_mlp) * image_scale_mlp
+
+        text_x = text_x + attn_o_text * text_scale_attn
+        text_x = text_x + self.mlp_text(norm(text_x) * (1 + text_scale_pre_mlp) + text_shift_mlp) * text_scale_mlp
+
+        return image_x, text_x
 
 class SingleStreamDitBlock(nn.Module):
-    def __init__(self, d_model: int, n_heads: int, clip_d_model: int):
+    def __init__(self, d_model: int, n_heads: int):
         """
         SingleStreamDitBlock
         d_model (int): model dimension
@@ -348,12 +368,12 @@ class SingleStreamDitBlock(nn.Module):
 
         self.attention = MultiHeadAttention(d_model=d_model, n_heads=n_heads)
 
-        self.mlp = SwiGLU(d_model, d_model * 4, d_model)
+        self.mlp = SwiGLU(d_model, d_model, d_model)
 
-        self.adaln_mlp = MLP(clip_d_model, d_model * 4, 6 * d_model)
+        self.adaln_mlp = nn.Sequential(nn.SiLU(), nn.Linear(d_model, 6 * d_model))
 
-        nn.init.zeros_(self.adaln_mlp.l2.weight)
-        nn.init.zeros_(self.adaln_mlp.l2.bias)
+        nn.init.zeros_(self.adaln_mlp[1].weight)
+        nn.init.zeros_(self.adaln_mlp[1].bias)
 
     def forward(
         self,
@@ -362,33 +382,18 @@ class SingleStreamDitBlock(nn.Module):
         attn_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         B, T, C = x.size()
-        condition = self.adaln_mlp(condition_input).view(B, 1, 6, C)
+        condition = self.adaln_mlp(condition_input).view(B, 6, C)
+        shift_attn, scale_pre_attn, scale_attn, shift_mlp, scale_pre_mlp, scale_mlp = condition.chunk(6, dim=1)
         
-        x = (
-            x
-            + self.attention(
-                norm(x) * condition[:, :, 0]
-                + condition[:, :, 1],
-                attn_mask=attn_mask,
-            )
-            * condition[:, :, 2]
-        )
-        x = (
-            x
-            + self.mlp(
-                norm(x) * condition[:, :, 3]
-                + condition[:, :, 4]
-            )
-            * condition[:, :, 5]
-        )
+        x = x + self.attention(norm(x) * (1 + scale_pre_attn) + shift_attn, attn_mask=attn_mask) * scale_attn
+        x = x + self.mlp(norm(x) * (1 + scale_pre_mlp) + shift_mlp) * scale_mlp
+
         return x
 
 
 class DiT(nn.Module):
     def __init__(
         self,
-        encoder_model: T5EncoderModel,
-        clip_encoder_model: CLIPTextModelWithProjection,
         d_model: int,
         n_heads: int,
         n_layers_multi_stream: int,
@@ -396,6 +401,8 @@ class DiT(nn.Module):
         patch_size: int,
         w: int,
         h: int,
+        clip_encoder_hidden_size: int,
+        t5_encoder_hidden_size: int,
         n_timesteps: int = 1000,
         n_channels: int = 4,
     ):
@@ -421,39 +428,37 @@ class DiT(nn.Module):
         self.patch_size = patch_size
         self.w = w
         self.h = h
+        self.clip_encoder_hidden_size = clip_encoder_hidden_size,
+        self.t5_encoder_hidden_size = t5_encoder_hidden_size,
         self.n_timesteps = n_timesteps
         self.n_channels = n_channels
 
-        self.encoder = encoder_model
-        self.clip_encoder = clip_encoder_model
-        for p in self.encoder.parameters():
-            p.requires_grad = False
-
-        for p in self.clip_encoder.parameters():
-            p.requires_grad = False
+        self.null_cond_vector = nn.Parameter(torch.zeros(clip_encoder_hidden_size))
 
         self.embedding_proj = nn.Linear(
-            self.encoder.config.d_model, d_model, bias=False
+            t5_encoder_hidden_size, d_model, bias=False
         )
+
+        self.pool_proj = nn.Linear(clip_encoder_hidden_size, d_model, bias=False)
 
         self.patchify = ConvPatchify(
             d_model=d_model, patch_size=patch_size, n_channels=n_channels
         )
 
         self.time_embedding = SinusoidalEmbedding(
-            n_embeddings=n_timesteps, d_model=self.clip_encoder.config.hidden_size
+            n_embeddings=n_timesteps, d_model=d_model
         )
 
         self.multi_stream_layers = nn.ModuleList(
             [
-                MultiStreamDiTBlock(d_model=d_model, n_heads=n_heads, clip_d_model=self.clip_encoder.config.hidden_size)
+                MultiStreamDiTBlock(d_model=d_model, n_heads=n_heads)
                 for i in range(n_layers_multi_stream)
             ]
         )
 
         self.single_stream_layers = nn.ModuleList(
             [
-                SingleStreamDitBlock(d_model=d_model, n_heads=n_heads, clip_d_model=self.clip_encoder.config.hidden_size)
+                SingleStreamDitBlock(d_model=d_model, n_heads=n_heads)
                 for i in range(n_layers_single_stream)
             ]
         )
@@ -470,49 +475,45 @@ class DiT(nn.Module):
     def forward(
         self,
         latent: torch.Tensor,
-        tokens: torch.Tensor,
-        clip_tokens: torch.Tensor,
         timesteps: torch.Tensor,
+        cond: torch.Tensor,
+        cond_pool: torch.Tensor,
         repa_layer: int = -1,
         attn_mask: torch.Tensor | None = None,
+        cond_mask: torch.Tensor | None = None
     ) -> torch.Tensor | tuple[torch.Tensor, ...]:
         latent_x = self.patchify(latent)
         B, N, C = latent_x.size()
 
-        with torch.no_grad():
-            encoder_hiddens = self.encoder(
-                tokens, output_hidden_states=False, attention_mask=attn_mask
-            ).last_hidden_state
-            text_pool = self.clip_encoder(
-                clip_tokens, output_hidden_states=False
-            ).text_embeds
+        cond_pool = torch.where(cond_mask, self.null_cond_vector.unsqueeze(0).expand_as(cond_pool), cond_pool)
 
-        text_x = self.embedding_proj(norm(encoder_hiddens))
-        condition_input = norm(text_pool) + self.time_embedding(timesteps)
+        text_x = self.embedding_proj(cond)
+
+        condition_input = self.time_embedding(timesteps) + self.pool_proj(cond_pool)
+
+        attn_mask = ((
+            (torch.cat(
+                (torch.ones(B, N, device=latent.device).bool(), attn_mask), dim=-1
+            ) * cond_mask).view(B, 1, 1, -1)).bool()
+            if attn_mask is not None
+            else None
+        ) 
 
         for layer in self.multi_stream_layers:
             latent_x, text_x = layer(
                 latent_x,
                 text_x,
                 condition_input,
-                attn_mask=(
-                    attn_mask.view(B, 1, 1, -1) if attn_mask is not None else None
-                ),
+                attn_mask=attn_mask,
             )
 
         x = torch.cat((latent_x, text_x), dim=1)
 
         repa_out = None
 
-        single_stream_attn_mask = (
-            torch.cat(
-                (torch.ones(B, N, device=latent.device).bool(), attn_mask), dim=-1
-            ).view(B, 1, 1, -1)
-            if attn_mask is not None
-            else None
-        )
+        
         for i, layer in enumerate(self.single_stream_layers):
-            x = layer(x, condition_input, attn_mask=single_stream_attn_mask)
+            x = layer(x, condition_input, attn_mask=attn_mask)
             if i == repa_layer:
                 repa_out = x[:, :N, :]
 

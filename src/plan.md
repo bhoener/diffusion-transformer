@@ -76,4 +76,9 @@ hmmm
  https://arxiv.org/pdf/2509.20952
 
 
-TODO: make ada-LN channel-wise
+TODO: make ada-LN channel-wise (done)
+
+cfg++ seems promising:
+
+https://arxiv.org/pdf/2406.08070
+

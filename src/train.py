@@ -204,6 +204,8 @@ def main() -> None:
 
     # training config
 
+    p_uncond = 0.2
+
     batch_size = 32  # prob change to 32 for h100
     grad_accum_steps = 1
     num_steps = 50000
@@ -228,8 +230,6 @@ def main() -> None:
     pad_to_seqlen = 64
 
     dit = DiT(
-        encoder_model=encoder,
-        clip_encoder_model=clip_encoder,
         d_model=d_model,
         n_heads=n_heads,
         n_layers_multi_stream=n_layers_multi_stream,
@@ -239,6 +239,8 @@ def main() -> None:
         // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
         h=img_size
         // 2 ** (len(ae.module.encoder.channels if ddp else ae.encoder.channels) - 1),
+        t5_encoder_hidden_size=encoder.config.d_model,
+        clip_encoder_hidden_size=clip_encoder.config.hidden_size,
         n_timesteps=n_timesteps,
         n_channels=z_channels,
     )
@@ -486,18 +488,33 @@ def main() -> None:
 
             # get dit prediction for latent, also take a hidden state for alignment loss
             t0 = time.time()
+
+            
+
+            # TODO: add conditioning input
+            with torch.no_grad():
+                encoder_hiddens = encoder(
+                    t5_tokens, output_hidden_states=False, attention_mask=t5_attn_mask
+                ).last_hidden_state
+                text_pool = clip_encoder(
+                    clip_tokens, output_hidden_states=False
+                ).text_embeds
+
+            cond_mask = torch.rand(batch_size, 1) < p_uncond
+
             with ctx:
                 dit_out, repa_out = dit(
                     interpolated,
-                    tokens=t5_tokens,
-                    attn_mask=t5_attn_mask,
-                    clip_tokens=clip_tokens,
+                    cond=encoder_hiddens,
+                    cond_pool=text_pool,
                     timesteps=torch.floor(
                         ts.view(-1)
                         * (dit.module.n_timesteps if ddp else dit.n_timesteps - 1)
                     )
                     .long()
                     .to(device),
+                    attn_mask=t5_attn_mask,
+                    cond_mask=cond_mask,
                     repa_layer=repa_layer,
                 )
             if DO_BENCHMARK:
