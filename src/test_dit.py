@@ -6,7 +6,7 @@ os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
 GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/radiant-microwave-176/"
+MODEL_PATH = "../saved_models/dit/deft-deluge-193/"
 ddp=True
 
 from tqdm import tqdm
@@ -140,11 +140,8 @@ n_layers_multi_stream = 14
 n_layers_single_stream = 14
 patch_size = 2
 n_timesteps = 100
-repa_layer=2
 
 dit = DiT(
-    encoder_model=encoder,
-    clip_encoder_model=clip_encoder,
     d_model=d_model,
     n_heads=n_heads,
     n_layers_multi_stream=n_layers_multi_stream,
@@ -152,6 +149,8 @@ dit = DiT(
     patch_size=patch_size,
     w=img_size // 2 ** (len(ae.encoder.channels) - 1),
     h=img_size // 2 ** (len(ae.encoder.channels) - 1),
+    clip_encoder_hidden_size=clip_encoder.config.hidden_size,
+    t5_encoder_hidden_size=encoder.config.d_model,
     n_timesteps=n_timesteps,
     n_channels=z_channels,
 )
@@ -167,18 +166,29 @@ bn_var = bn_state_dict["running_var"]
 bn_mean = bn_state_dict["running_mean"]
 print(bn_mean.size(), bn_var.size())
 
+def alpha(t: float) -> float:
+    return 0.1
+
 with torch.no_grad():
     while (prompt := input("Enter a prompt: ")).lower() not in {"q", "quit"}:
         tokens = t5_tokenizer.encode(prompt, return_tensors="pt").to(device)
         clip_tokens = clip_tokenizer.encode(prompt, return_tensors="pt").to(device)
+        cond = encoder(tokens).last_hidden_state
+        cond_pool = clip_encoder(tokens).text_embeds
 
         latent = torch.randn(1, z_channels, latent_size, latent_size).to(device) # ae.encode(to_tensor(Image.open("test_img2.png").convert("RGB").resize((img_size, img_size))).unsqueeze(0).to(device))[0]
 
         for timestep in tqdm(range(GENERATION_STEPS)):
             t = timestep / GENERATION_STEPS
             
-            dit_out = dit(latent, tokens, clip_tokens, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device))
-            latent = latent + dit_out / GENERATION_STEPS
+            v_cond = dit(latent, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device), cond, cond_pool)
+            half_step_x = latent + (1 / GENERATION_STEPS) * v_cond / 2
+
+            v_cond_half_step = dit(latent, torch.tensor([t * (dit.n_timesteps - 1)], device=device).long().view(-1, 1, 1, 1), cond, cond_pool)
+            v_uncond_half_step = dit(latent, torch.tensor([t * (dit.n_timesteps - 1)], device=device).long().view(-1, 1, 1, 1), cond, cond_pool, attn_mask=torch.ones_like(tokens, device=device), cond_mask=torch.zeros(1, 1, device=device))
+
+            v_corrected = v_cond + alpha(t) * (v_cond_half_step - v_uncond_half_step)
+            latent = latent + v_corrected / GENERATION_STEPS
 
         latent = (latent + bn_mean.view(1, -1, 1, 1)) * (bn_var.view(1, -1, 1, 1) ** 0.5)
 

@@ -115,19 +115,19 @@ class DoubleStreamAttention(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         B, N, C = image_x.size()
 
-        Q_image = rearrange(self.wq_image(image_x), "b t (h d) -> b h t d", h=self.n_heads)
-        K_image = rearrange(self.wk_image(image_x), "b t (h d) -> b h t d", h=self.n_heads)
-        V_image = rearrange(self.wv_image(image_x), "b t (h d) -> b h t d", h=self.n_heads)
+        Q_image = rearrange(self.wq_image(image_x), "b t (h d) -> b t h d", h=self.n_heads)
+        K_image = rearrange(self.wk_image(image_x), "b t (h d) -> b t h d", h=self.n_heads)
+        V_image = rearrange(self.wv_image(image_x), "b t (h d) -> b t h d", h=self.n_heads)
 
-        Q_text = rearrange(self.wq_text(text_x), "b t (h d) -> b h t d", h=self.n_heads)
-        K_text = rearrange(self.wk_text(text_x), "b t (h d) -> b h t d", h=self.n_heads)
-        V_text = rearrange(self.wv_text(text_x), "b t (h d) -> b h t d", h=self.n_heads)
+        Q_text = rearrange(self.wq_text(text_x), "b t (h d) -> b t h d", h=self.n_heads)
+        K_text = rearrange(self.wk_text(text_x), "b t (h d) -> b t h d", h=self.n_heads)
+        V_text = rearrange(self.wv_text(text_x), "b t (h d) -> b t h d", h=self.n_heads)
 
         
 
-        Q = self.rope(norm(torch.cat((Q_image, Q_text), dim=2)))
-        K = self.rope(norm(torch.cat((K_image, K_text), dim=2)))
-        V = self.rope(norm(torch.cat((V_image, V_text), dim=2)))
+        Q = self.rope(norm(torch.cat((Q_image, Q_text), dim=1))).transpose(1, 2)
+        K = self.rope(norm(torch.cat((K_image, K_text), dim=1))).transpose(1, 2)
+        V = norm(torch.cat((V_image, V_text), dim=1)).transpose(1, 2)
 
         attn_outs = rearrange(F.scaled_dot_product_attention(Q, K, V, attn_mask=attn_mask), "b h t d -> b t (h d)")
 
@@ -428,8 +428,8 @@ class DiT(nn.Module):
         self.patch_size = patch_size
         self.w = w
         self.h = h
-        self.clip_encoder_hidden_size = clip_encoder_hidden_size,
-        self.t5_encoder_hidden_size = t5_encoder_hidden_size,
+        self.clip_encoder_hidden_size = clip_encoder_hidden_size
+        self.t5_encoder_hidden_size = t5_encoder_hidden_size
         self.n_timesteps = n_timesteps
         self.n_channels = n_channels
 
@@ -485,7 +485,8 @@ class DiT(nn.Module):
         latent_x = self.patchify(latent)
         B, N, C = latent_x.size()
 
-        cond_pool = torch.where(cond_mask, self.null_cond_vector.unsqueeze(0).expand_as(cond_pool), cond_pool)
+        if cond_mask is not None:
+            cond_pool = torch.where(cond_mask, self.null_cond_vector.unsqueeze(0).expand_as(cond_pool), cond_pool)
 
         text_x = self.embedding_proj(cond)
 

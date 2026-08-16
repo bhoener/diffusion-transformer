@@ -154,6 +154,7 @@ def main() -> None:
 
     lpips_loss = lpips.LPIPS(net="vgg")
     lpips_loss = lpips_loss.to(device)
+    lpips_loss.requires_grad_(False)
 
     log("lpips loss setup")
 
@@ -269,7 +270,7 @@ def main() -> None:
     proj_conv = nn.Conv2d(
         d_model, dino_model.config.hidden_size, kernel_size=3, stride=1, padding=1
     ).to(device)
-    nn.init.zeros_(proj_conv.weight.data)
+
     if ddp:
         proj_conv = DDP(proj_conv, device_ids=[ddp_rank])
 
@@ -500,7 +501,7 @@ def main() -> None:
                     clip_tokens, output_hidden_states=False
                 ).text_embeds
 
-            cond_mask = torch.rand(batch_size, 1) < p_uncond
+            cond_mask = ~(torch.rand(batch_size, 1, device=device) < p_uncond)
 
             with ctx:
                 dit_out, repa_out = dit(
