@@ -65,8 +65,8 @@ class MultiHeadAttention(nn.Module):
         self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         B, T, C = x.size()
-        Q = norm(self.rope(self.wq(x).view(B, T, self.n_heads, -1)).transpose(1, 2))
-        K = norm(self.rope(self.wk(x).view(B, T, self.n_heads, -1)).transpose(1, 2))
+        Q = self.rope(norm(self.wq(x).view(B, T, self.n_heads, -1))).transpose(1, 2)
+        K = self.rope(norm(self.wk(x).view(B, T, self.n_heads, -1))).transpose(1, 2)
         V = self.wv(x).view(B, T, self.n_heads, -1).transpose(1, 2)
 
         attn_scores = (
@@ -127,7 +127,7 @@ class DoubleStreamAttention(nn.Module):
 
         Q = self.rope(norm(torch.cat((Q_image, Q_text), dim=1))).transpose(1, 2)
         K = self.rope(norm(torch.cat((K_image, K_text), dim=1))).transpose(1, 2)
-        V = norm(torch.cat((V_image, V_text), dim=1)).transpose(1, 2)
+        V = torch.cat((V_image, V_text), dim=1).transpose(1, 2)
 
         attn_outs = rearrange(F.scaled_dot_product_attention(Q, K, V, attn_mask=attn_mask), "b h t d -> b t (h d)")
 
@@ -493,9 +493,9 @@ class DiT(nn.Module):
         condition_input = self.time_embedding(timesteps) + self.pool_proj(cond_pool)
 
         attn_mask = ((
-            (torch.cat(
-                (torch.ones(B, N, device=latent.device).bool(), attn_mask), dim=-1
-            ) * cond_mask).view(B, 1, 1, -1)).bool()
+            torch.cat(
+                (torch.ones(B, N, device=latent.device).bool(), attn_mask * cond_mask), dim=-1
+            ).view(B, 1, 1, -1)).bool()
             if attn_mask is not None
             else None
         ) 

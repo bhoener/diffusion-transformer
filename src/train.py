@@ -550,7 +550,7 @@ def main() -> None:
 
             # reg losses
             loss_mse = ((images - recon) ** 2).mean()
-            loss_kl = (torch.clip(logvar, max=4).exp() + mu**2 - 1 - logvar).mean()
+            loss_kl = (torch.clip(logvar, max=3).exp() + mu**2 - 1 - logvar).mean()
             loss_lpips = lpips_loss(images * 2 - 1, recon * 2 - 1).mean()
 
             loss_reg = (
