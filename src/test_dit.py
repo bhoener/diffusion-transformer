@@ -5,8 +5,8 @@ from pathlib import Path
 os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "1")
 
 # config
-GENERATION_STEPS = 30
-MODEL_PATH = "../saved_models/dit/bright-pond-197/"
+GENERATION_STEPS = 25
+MODEL_PATH = "../saved_models/dit/frosty-haze-199/"
 ddp=True
 
 from tqdm import tqdm
@@ -166,8 +166,8 @@ bn_var = bn_state_dict["running_var"]
 bn_mean = bn_state_dict["running_mean"]
 print(bn_mean.size(), bn_var.size())
 
-lambda_max = 0.2
-gamma = 1.0
+lambda_max = 0.8
+gamma = 0
 
 def alpha(t: float, gamma: float, lambda_max: float) -> float:
     return lambda_max * t ** gamma
@@ -184,11 +184,11 @@ with torch.no_grad():
         for timestep in tqdm(range(GENERATION_STEPS)):
             t = timestep / GENERATION_STEPS
             
-            v_cond = dit(latent, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device), cond, cond_pool)
+            v_cond = dit(latent, torch.tensor([t * (dit.n_timesteps - 1)]).long().view(-1, 1, 1, 1).to(device), cond, cond_pool, attn_mask=torch.ones_like(tokens, device=device).bool(), cond_mask=torch.ones(1, 1, device=device).bool())
             half_step_x = latent + (1 / GENERATION_STEPS) * v_cond / 2
 
-            v_cond_half_step = dit(half_step_x, torch.tensor([(t + 1 / GENERATION_STEPS) * (dit.n_timesteps - 1)], device=device).long().view(-1, 1, 1, 1), cond, cond_pool)
-            v_uncond_half_step = dit(half_step_x, torch.tensor([(t + 1 / GENERATION_STEPS) * (dit.n_timesteps - 1)], device=device).long().view(-1, 1, 1, 1), cond, cond_pool, attn_mask=torch.ones_like(tokens, device=device).bool(), cond_mask=torch.zeros(1, 1, device=device).bool())
+            v_cond_half_step = dit(half_step_x, torch.tensor([(t + 1 / GENERATION_STEPS / 2) * (dit.n_timesteps - 1)], device=device).long().view(-1, 1, 1, 1), cond, cond_pool, attn_mask=torch.ones_like(tokens, device=device).bool(), cond_mask=torch.ones(1, 1, device=device).bool())
+            v_uncond_half_step = dit(half_step_x, torch.tensor([(t + 1 / GENERATION_STEPS / 2) * (dit.n_timesteps - 1)], device=device).long().view(-1, 1, 1, 1), cond, cond_pool, attn_mask=torch.ones_like(tokens, device=device).bool(), cond_mask=torch.zeros(1, 1, device=device).bool())
 
             v_corrected = v_cond + alpha(t, gamma, lambda_max) * (v_cond_half_step - v_uncond_half_step)
             latent = latent + v_corrected / GENERATION_STEPS

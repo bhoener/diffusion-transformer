@@ -197,8 +197,8 @@ def main() -> None:
     # DiT
     d_model = 1152
     n_heads = 36
-    n_layers_multi_stream = 14
-    n_layers_single_stream = 14
+    n_layers_multi_stream = 7
+    n_layers_single_stream = 22
     patch_size = 2
     n_timesteps = 100
     repa_layer = 10
@@ -209,7 +209,7 @@ def main() -> None:
 
     batch_size = 32  # prob change to 32 for h100
     grad_accum_steps = 1
-    num_steps = 50000
+    num_steps = 65000
     cooldown_frac = 0.25
     lr_ae = 3e-4
     lr_dit_muon = 1e-2
