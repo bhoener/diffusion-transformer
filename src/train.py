@@ -197,8 +197,8 @@ def main() -> None:
     # DiT
     d_model = 1152
     n_heads = 36
-    n_layers_multi_stream = 7
-    n_layers_single_stream = 22
+    n_layers_multi_stream = 14
+    n_layers_single_stream = 14
     patch_size = 2
     n_timesteps = 100
     repa_layer = 10
